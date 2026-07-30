@@ -1,0 +1,16 @@
+services:
+  # [추천 옵션 1] Backend + Frontend 통합 Web Service (단일 인스턴스)
+  - type: web
+    name: web-mobile-ecommerce-app
+    env: node
+    region: singapore # 또는 oregon, frankfurt 등 선택 가능
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false # Render 대시보드에서 직접 입력
+      - key: JWT_SECRET
+        generateValue: true
+      # RENDER_EXTERNAL_URL 은 Render에 의해 자동으로 주입되어 14분 Cron Ping에 사용됩니다.

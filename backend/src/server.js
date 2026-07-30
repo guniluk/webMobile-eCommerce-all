@@ -17,11 +17,25 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 글로벌 미들웨어
-app.use(cors());
+// 글로벌 미들웨어 (CORS 허용)
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-app.use(clerkMiddleware()); //add req.auth
+
+// 요청 로거 (디버깅용)
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api")) {
+    console.log(`[API Request] ${req.method} ${req.path}`);
+  }
+  next();
+});
+
+app.use(clerkMiddleware()); // req.auth 주입
 
 // 1. Health check 엔드포인트
 app.get("/api/health", (req, res) => {
@@ -69,3 +83,4 @@ app.listen(PORT, () => {
   connectDB();
   console.log(`Server is running on port ${PORT}`);
 });
+

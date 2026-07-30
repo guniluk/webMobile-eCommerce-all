@@ -3,6 +3,7 @@ import { serve } from "inngest/express";
 import {
   inngest,
   syncUserCreation,
+  syncUserUpdation,
   syncUserDeletion,
 } from "../config/inngest.js";
 
@@ -13,8 +14,9 @@ router.use(
   "/",
   serve({
     client: inngest,
-    functions: [syncUserCreation, syncUserDeletion],
+    functions: [syncUserCreation, syncUserUpdation, syncUserDeletion],
   }),
 );
 
 export default router;
+

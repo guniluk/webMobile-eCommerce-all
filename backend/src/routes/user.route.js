@@ -1,8 +1,15 @@
 import express from "express";
-import { signup } from "../controllers/user.controller.js";
+import {
+  syncUser,
+  handleClerkWebhook,
+  getProfile,
+} from "../controllers/user.controller.js";
 
-const route = express.Router();
+const router = express.Router();
 
-route.get("/signup", signup);
+router.post("/sync", syncUser);
+router.post("/webhook", handleClerkWebhook);
+router.get("/me", getProfile);
 
-export default route;
+export default router;
+

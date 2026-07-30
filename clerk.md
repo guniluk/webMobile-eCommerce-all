@@ -218,9 +218,18 @@ Render.com 대시보드에서 배포된 Web Service의 **`Environment Variables`
 
 ## 💡 6. 자주 하는 실수 & 체크리스트 (Troubleshooting)
 
-1. **Vite 환경 변수 접두사 미준수**:
+1. **Clerk 회원가입/로그인 시 MongoDB에 유저 생성이 안 되는 원인 & 해결 방안**:
+   - **원인 1 (로컬 개발 환경 한계)**: Webhook 방식은 Clerk 서버가 백엔드 URL로 HTTP 요청을 보내는 구조이므로, 로컬(`http://localhost:3000`) 환경이나 외부 도메인/Webhook 설정이 안 된 환경에서는 Webhook 신호가 전달되지 않아 DB 유저가 생성되지 않습니다.
+   - **원인 2 (Webhook 이벤트 및 Inngest 바인딩 미흡)**: Webhook 이벤트명(`user.created` vs `clerk/user.created`)이나 Inngest 라우트에 `syncUserUpdation` 함수 누락 등의 문제가 원인일 수 있습니다.
+   - **해결 방안 (3중 안전 동기화)**:
+     - 1) **프론트엔드 로그인 자동 Sync (`/api/user/sync`)**: 사용자가 로그인하는 순간 `App.jsx`에서 백엔드 `/api/user/sync`를 자동 호출하여 MongoDB에 `User`를 생성/업데이트(Upsert)합니다. (로컬 및 웹훅 미수신 환경에서도 100% 작동)
+     - 2) **Inngest 백그라운드 Worker (`/api/inngest`)**: Inngest 이벤트 트리거를 `user.created`, `clerk/user.created` 모두 수신할 수 있도록 최적화하고 라우터 함수 전체를 등록했습니다.
+     - 3) **Direct Clerk Webhook (`/api/user/webhook`)**: Clerk 대시보드 Webhooks에서 Inngest 없이 직접 백엔드로 웹훅을 발송해도 즉시 동기화하도록 백엔드 핸들러를 추가했습니다.
+
+2. **Vite 환경 변수 접두사 미준수**:
    - React(Vite) 프로젝트 환경 변수는 반드시 **`VITE_`**로 시작해야 클라이언트 코드에서 `import.meta.env.VITE_...`로 읽을 수 있습니다.
-2. **CORS 에러 발생 시**:
+3. **CORS 에러 발생 시**:
    - 백엔드의 `app.use(cors())`가 설정되어 있는지 확인하고, 필요 시 `cors({ origin: 'http://localhost:5173', credentials: true })` 옵션을 명시합니다.
-3. **Clerk 대시보드 도메인 허용 설정**:
+4. **Clerk 대시보드 도메인 허용 설정**:
    - 프로덕션 배포 후(`*.onrender.com`), Clerk 대시보드 ➔ `Domains` 설정에서 배포된 주소가 정상 등록되어 있는지 확인합니다.
+

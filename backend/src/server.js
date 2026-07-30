@@ -20,10 +20,13 @@ app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// 1. Health check 엔드포인트 (최상선 위치)
+// 1. Health check & Favicon 엔드포인트
 app.get("/api/health", (req, res) => {
   res.status(200).json({ message: "Server is OK", timestamp: new Date().toISOString() });
 });
+
+// favicon.ico 404 에러 방지 핸들러
+app.get("/favicon.ico", (req, res) => res.status(204).end());
 
 // 2. API 라우트 등록 (정적 서빙 및 Catch-all 라우터보다 먼저 등록)
 app.use("/api/user", userRoute);

@@ -4,6 +4,8 @@ import { User } from "../models/user.model.js";
 // Inngest 인스턴스 초기화
 export const inngest = new Inngest({ id: "ecommerce-app" });
 
+// clerk의 webhook endpoint를 Inngest로 설정. clerk에서 user event가 발생하면 이 endpoint로 전송됨.
+
 /**
  * 1. Clerk 회원가입 이벤트 (clerk/user.created 및 user.created)
  * Clerk에서 새 사용자가 가입하면 MongoDB에 User 문서를 생성합니다.
@@ -11,10 +13,7 @@ export const inngest = new Inngest({ id: "ecommerce-app" });
 export const syncUserCreation = inngest.createFunction(
   {
     id: "sync-user-from-clerk",
-    triggers: [
-      { event: "clerk/user.created" },
-      { event: "user.created" },
-    ],
+    triggers: [{ event: "clerk/user.created" }, { event: "user.created" }],
   },
   async ({ event }) => {
     const data = event.data || {};
@@ -44,7 +43,7 @@ export const syncUserCreation = inngest.createFunction(
 
     const user = await User.findOneAndUpdate({ clerkId: id }, userData, {
       upsert: true,
-      new: true,
+      returnDocument: "after",
       setDefaultsOnInsert: true,
     });
 
@@ -53,7 +52,7 @@ export const syncUserCreation = inngest.createFunction(
       message: "MongoDB User created/synced successfully",
       userId: id,
     };
-  }
+  },
 );
 
 /**
@@ -63,10 +62,7 @@ export const syncUserCreation = inngest.createFunction(
 export const syncUserUpdation = inngest.createFunction(
   {
     id: "update-user-from-clerk",
-    triggers: [
-      { event: "clerk/user.updated" },
-      { event: "user.updated" },
-    ],
+    triggers: [{ event: "clerk/user.updated" }, { event: "user.updated" }],
   },
   async ({ event }) => {
     const data = event.data || {};
@@ -91,13 +87,15 @@ export const syncUserUpdation = inngest.createFunction(
       imageUrl: image_url,
     };
 
-    await User.findOneAndUpdate({ clerkId: id }, updatedData, { new: true });
+    await User.findOneAndUpdate({ clerkId: id }, updatedData, {
+      returnDocument: "after",
+    });
     return {
       success: true,
       message: "MongoDB User updated successfully",
       userId: id,
     };
-  }
+  },
 );
 
 /**
@@ -107,10 +105,7 @@ export const syncUserUpdation = inngest.createFunction(
 export const syncUserDeletion = inngest.createFunction(
   {
     id: "delete-user-from-clerk",
-    triggers: [
-      { event: "clerk/user.deleted" },
-      { event: "user.deleted" },
-    ],
+    triggers: [{ event: "clerk/user.deleted" }, { event: "user.deleted" }],
   },
   async ({ event }) => {
     const data = event.data || {};
@@ -124,6 +119,5 @@ export const syncUserDeletion = inngest.createFunction(
       message: "MongoDB User deleted successfully",
       userId: id,
     };
-  }
+  },
 );
-

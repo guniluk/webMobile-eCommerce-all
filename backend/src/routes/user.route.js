@@ -12,4 +12,3 @@ router.post("/webhook", handleClerkWebhook);
 router.get("/me", getProfile);
 
 export default router;
-

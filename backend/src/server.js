@@ -1,13 +1,14 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import { clerkMiddleware } from "@clerk/express";
 import path from "path";
 import { fileURLToPath } from "url";
+
 import connectDB from "./config/connectDB.js";
-import userRoute from "./routes/user.route.js";
 import inngestRoute from "./routes/inngest.route.js";
 import { initKeepAlive } from "./utils/cronKeepAlive.js";
-import { clerkMiddleware } from "@clerk/express";
+import userRoute from "./routes/user.route.js";
 
 dotenv.config();
 
@@ -22,19 +23,10 @@ app.use(
   cors({
     origin: true,
     credentials: true,
-  })
+  }),
 );
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
-// 요청 로거 (디버깅용)
-app.use((req, res, next) => {
-  if (req.path.startsWith("/api")) {
-    console.log(`[API Request] ${req.method} ${req.path}`);
-  }
-  next();
-});
-
 app.use(clerkMiddleware()); // req.auth 주입
 
 // 1. Health check 엔드포인트
@@ -83,4 +75,3 @@ app.listen(PORT, () => {
   connectDB();
   console.log(`Server is running on port ${PORT}`);
 });
-

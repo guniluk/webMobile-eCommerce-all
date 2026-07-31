@@ -24,18 +24,21 @@ export const syncUser = async (req, res) => {
 
     const userData = {
       clerkId: targetClerkId,
-      email: email && email.trim() !== "" ? email : `${targetClerkId}@clerk.user`,
+      email:
+        email && email.trim() !== "" ? email : `${targetClerkId}@clerk.user`,
       name: name && name.trim() !== "" ? name : "User",
       imageUrl: imageUrl || "",
     };
 
-    console.log(`[syncUser 요청 수신] clerkId: ${targetClerkId}, email: ${userData.email}`);
+    console.log(
+      `[syncUser 요청 수신] clerkId: ${targetClerkId}, email: ${userData.email}`,
+    );
 
     // DB에 존재하면 업데이트, 없으면 생성 (Upsert)
     const user = await User.findOneAndUpdate(
       { clerkId: targetClerkId },
       { $set: userData },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
     );
 
     console.log(`[syncUser 성공] MongoDB User 저장완료 (_id: ${user._id})`);
@@ -80,14 +83,14 @@ export const handleClerkWebhook = async (req, res) => {
       const user = await User.findOneAndUpdate(
         { clerkId: id },
         { clerkId: id, email, name, imageUrl },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+        { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
       );
       console.log(`[Clerk Webhook] 유저 생성 완료: ${id} (_id: ${user._id})`);
     } else if (type === "user.updated" || type === "clerk/user.updated") {
       await User.findOneAndUpdate(
         { clerkId: id },
         { email, name, imageUrl },
-        { new: true }
+        { returnDocument: "after" },
       );
       console.log(`[Clerk Webhook] 유저 수정 완료: ${id}`);
     } else if (type === "user.deleted" || type === "clerk/user.deleted") {
@@ -95,7 +98,9 @@ export const handleClerkWebhook = async (req, res) => {
       console.log(`[Clerk Webhook] 유저 삭제 완료: ${id}`);
     }
 
-    return res.status(200).json({ success: true, message: "Webhook 처리 완료" });
+    return res
+      .status(200)
+      .json({ success: true, message: "Webhook 처리 완료" });
   } catch (error) {
     console.error("[handleClerkWebhook Error]:", error);
     return res.status(500).json({ success: false, message: error.message });
@@ -110,12 +115,19 @@ export const getProfile = async (req, res) => {
     const { userId } = getAuth(req);
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "인증되지 않은 사용자입니다." });
+      return res
+        .status(401)
+        .json({ success: false, message: "인증되지 않은 사용자입니다." });
     }
 
     const user = await User.findOne({ clerkId: userId });
     if (!user) {
-      return res.status(404).json({ success: false, message: "MongoDB에서 사용자를 찾을 수 없습니다." });
+      return res
+        .status(404)
+        .json({
+          success: false,
+          message: "MongoDB에서 사용자를 찾을 수 없습니다.",
+        });
     }
 
     return res.status(200).json({ success: true, user });
@@ -123,5 +135,3 @@ export const getProfile = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
-
-

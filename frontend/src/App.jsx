@@ -25,21 +25,11 @@ const App = () => {
             imageUrl,
           };
 
-          // 1차 시도: 상대 경로 (/api/user/sync) - Vite Proxy 활용
           let res = await fetch("/api/user/sync", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           }).catch(() => null);
-
-          // 상대 경로 실패 시 2차 시도: 백엔드 3000 포트 직접 요청
-          if (!res || !res.ok) {
-            res = await fetch("http://localhost:3000/api/user/sync", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload),
-            }).catch(() => null);
-          }
 
           if (res && res.ok) {
             const data = await res.json();
@@ -58,7 +48,6 @@ const App = () => {
         }
       }
     };
-
     syncUserToMongoDB();
   }, [isLoaded, isSignedIn, user]);
 
@@ -110,5 +99,3 @@ const App = () => {
 };
 
 export default App;
-
-

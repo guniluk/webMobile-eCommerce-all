@@ -9,6 +9,7 @@ import connectDB from "./config/connectDB.js";
 import inngestRoute from "./routes/inngest.route.js";
 import { initKeepAlive } from "./utils/cronKeepAlive.js";
 import userRoute from "./routes/user.route.js";
+import adminRoute from "./routes/admin.route.js";
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ app.get("/api/health", (req, res) => {
 // 2. 백엔드 API 라우트 등록
 app.use("/api/inngest", inngestRoute);
 app.use("/api/user", userRoute);
+app.use("/api/admin", adminRoute);
 
 // 3. Render.com 프로덕션 전용 기능 (Self-Ping Cron & Frontend 정적 서빙)
 if (process.env.NODE_ENV === "production") {

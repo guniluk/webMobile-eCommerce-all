@@ -12,7 +12,8 @@ export const syncUser = async (req, res) => {
     const authUserId = auth?.userId;
 
     const { clerkId, email, name, imageUrl } = req.body || {};
-    const targetClerkId = clerkId || authUserId;
+    // 보안: 로그인 인증 토큰(authUserId)이 존재하는 경우 최우선으로 사용하여 ID 변조 방지
+    const targetClerkId = authUserId || clerkId;
 
     if (!targetClerkId) {
       console.warn("[syncUser 경고] Clerk User ID가 제공되지 않음");
@@ -112,6 +113,11 @@ export const handleClerkWebhook = async (req, res) => {
  */
 export const getProfile = async (req, res) => {
   try {
+    // protectRoute 미들웨어를 거쳐 이미 req.user가 조회된 경우 바로 반환
+    if (req.user) {
+      return res.status(200).json({ success: true, user: req.user });
+    }
+
     const { userId } = getAuth(req);
 
     if (!userId) {
@@ -122,15 +128,195 @@ export const getProfile = async (req, res) => {
 
     const user = await User.findOne({ clerkId: userId });
     if (!user) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "MongoDB에서 사용자를 찾을 수 없습니다.",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "MongoDB에서 사용자를 찾을 수 없습니다.",
+      });
     }
 
     return res.status(200).json({ success: true, user });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const addAddress = async (req, res) => {
+  try {
+    const user = req.user;
+    const {
+      label,
+      fullName,
+      streetAddress,
+      city,
+      state,
+      zipCode,
+      phoneNumber,
+      isDefault,
+    } = req.body;
+
+    if (
+      !label ||
+      !fullName ||
+      !streetAddress ||
+      !city ||
+      !state ||
+      !zipCode ||
+      !phoneNumber ||
+      !isDefault
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "배송지 정보가 제공되지 않았습니다.",
+      });
+    }
+
+    // 만약 isDefault가 true이면 다른 address의 isDefault를 false로 변경
+    if (isDefault) {
+      user.addresses.forEach((address) => {
+        address.isDefault = false;
+      });
+    }
+
+    const address = {
+      label,
+      fullName,
+      streetAddress,
+      city,
+      state,
+      zipCode,
+      phoneNumber,
+      isDefault: isDefault || false,
+    };
+    user.addresses.push(address);
+    await user.save();
+
+    return res.status(201).json({
+      message: "배송지가 추가되었습니다.",
+      addresses: user.addresses,
+    });
+  } catch (error) {
+    console.error("배송지 추가 실패:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getAddresses = async (req, res) => {
+  try {
+    const user = req.user;
+    return res.status(200).json({ addresses: user.addresses });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateAddress = async (req, res) => {
+  try {
+    const user = req.user;
+    const { addressId } = req.params;
+    const { address } = req.body;
+    const addressIndex = user.addresses.findIndex(
+      (address) => address._id.toString() === addressId,
+    );
+    if (addressIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: "주소를 찾을 수 없습니다.",
+      });
+    }
+    user.addresses[addressIndex] = address;
+    await user.save();
+    return res.status(200).json({
+      success: true,
+      message: "주소가 성공적으로 수정되었습니다.",
+      user,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteAddress = async (req, res) => {
+  try {
+    const user = req.user;
+    const { addressId } = req.params;
+    const addressIndex = user.addresses.findIndex(
+      (address) => address._id.toString() === addressId,
+    );
+    if (addressIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: "주소를 찾을 수 없습니다.",
+      });
+    }
+    user.addresses.splice(addressIndex, 1);
+    await user.save();
+    return res.status(200).json({
+      success: true,
+      message: "주소가 성공적으로 삭제되었습니다.",
+      user,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const addWishlist = async (req, res) => {
+  try {
+    const user = req.user;
+    const { productId } = req.body;
+    if (!productId) {
+      return res.status(400).json({
+        success: false,
+        message: "상품 ID가 제공되지 않았습니다.",
+      });
+    }
+    if (user.wishList.includes(productId)) {
+      return res.status(400).json({
+        success: false,
+        message: "이미 위시리스트에 추가된 상품입니다.",
+      });
+    }
+    user.wishList.push(productId);
+    await user.save();
+    return res.status(200).json({
+      success: true,
+      message: "상품이 성공적으로 위시리스트에 추가되었습니다.",
+      user,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getWishlists = async (req, res) => {
+  try {
+    const user = req.user;
+    return res.status(200).json({ success: true, wishlists: user.wishList });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteWishlist = async (req, res) => {
+  try {
+    const user = req.user;
+    const { productId } = req.params;
+    const productIndex = user.wishList.findIndex(
+      (product) => product._id.toString() === productId,
+    );
+    if (productIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: "위시리스트에서 상품을 찾을 수 없습니다.",
+      });
+    }
+    user.wishList.splice(productIndex, 1);
+    await user.save();
+    return res.status(200).json({
+      success: true,
+      message: "상품이 성공적으로 위시리스트에서 삭제되었습니다.",
+      user,
+    });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }

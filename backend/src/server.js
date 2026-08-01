@@ -39,7 +39,7 @@ app.get("/api/health", (req, res) => {
 
 // 2. 백엔드 API 라우트 등록
 app.use("/api/inngest", inngestRoute);
-app.use("/api/user", userRoute);
+app.use("/api/users", userRoute);
 app.use("/api/admin", adminRoute);
 
 // 3. Render.com 프로덕션 전용 기능 (Self-Ping Cron & Frontend 정적 서빙)

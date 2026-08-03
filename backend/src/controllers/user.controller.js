@@ -213,7 +213,17 @@ export const updateAddress = async (req, res) => {
   try {
     const user = req.user;
     const { addressId } = req.params;
-    const { address } = req.body;
+    const {
+      label,
+      fullName,
+      streetAddress,
+      city,
+      state,
+      zipCode,
+      phoneNumber,
+      isDefault,
+    } = req.body;
+
     const addressIndex = user.addresses.findIndex(
       (address) => address._id.toString() === addressId,
     );
@@ -223,12 +233,34 @@ export const updateAddress = async (req, res) => {
         message: "주소를 찾을 수 없습니다.",
       });
     }
+
+    // 만약 isDefault가 true이면 다른 address의 isDefault를 false로 변경
+    if (isDefault) {
+      user.addresses.forEach((address) => {
+        address.isDefault = false;
+      });
+    }
+
+    const address = {
+      label: label || user.addresses[addressIndex].label,
+      fullName: fullName || user.addresses[addressIndex].fullName,
+      streetAddress:
+        streetAddress || user.addresses[addressIndex].streetAddress,
+      city: city || user.addresses[addressIndex].city,
+      state: state || user.addresses[addressIndex].state,
+      zipCode: zipCode || user.addresses[addressIndex].zipCode,
+      phoneNumber: phoneNumber || user.addresses[addressIndex].phoneNumber,
+      isDefault:
+        isDefault !== undefined
+          ? isDefault
+          : user.addresses[addressIndex].isDefault,
+    };
+
     user.addresses[addressIndex] = address;
     await user.save();
     return res.status(200).json({
-      success: true,
       message: "주소가 성공적으로 수정되었습니다.",
-      user,
+      addresses: user.addresses,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -239,21 +271,26 @@ export const deleteAddress = async (req, res) => {
   try {
     const user = req.user;
     const { addressId } = req.params;
-    const addressIndex = user.addresses.findIndex(
+    const address = user.addresses.find(
       (address) => address._id.toString() === addressId,
     );
-    if (addressIndex === -1) {
+    if (!address) {
       return res.status(404).json({
         success: false,
         message: "주소를 찾을 수 없습니다.",
       });
     }
-    user.addresses.splice(addressIndex, 1);
+    if (address.isDefault) {
+      return res.status(400).json({
+        success: false,
+        message: "기본 배송지는 삭제할 수 없습니다.",
+      });
+    }
+    user.addresses.pull(addressId);
     await user.save();
     return res.status(200).json({
-      success: true,
       message: "주소가 성공적으로 삭제되었습니다.",
-      user,
+      addresses: user.addresses,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -279,9 +316,8 @@ export const addWishlist = async (req, res) => {
     user.wishList.push(productId);
     await user.save();
     return res.status(200).json({
-      success: true,
       message: "상품이 성공적으로 위시리스트에 추가되었습니다.",
-      user,
+      wishList: user.wishList,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -290,10 +326,15 @@ export const addWishlist = async (req, res) => {
 
 export const getWishlists = async (req, res) => {
   try {
-    const user = req.user;
-    return res.status(200).json({ success: true, wishlists: user.wishList });
+    const user = await User.findById(req.user._id).populate("wishList");
+    if (!user) {
+      return res.status(404).json({
+        message: "사용자를 찾을 수 없습니다.",
+      });
+    }
+    return res.status(200).json({ wishList: user.wishList });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 
@@ -306,16 +347,14 @@ export const deleteWishlist = async (req, res) => {
     );
     if (productIndex === -1) {
       return res.status(404).json({
-        success: false,
         message: "위시리스트에서 상품을 찾을 수 없습니다.",
       });
     }
     user.wishList.splice(productIndex, 1);
     await user.save();
     return res.status(200).json({
-      success: true,
       message: "상품이 성공적으로 위시리스트에서 삭제되었습니다.",
-      user,
+      wishList: user.wishList,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

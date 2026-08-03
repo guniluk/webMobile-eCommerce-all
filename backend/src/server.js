@@ -10,6 +10,10 @@ import inngestRoute from "./routes/inngest.route.js";
 import { initKeepAlive } from "./utils/cronKeepAlive.js";
 import userRoute from "./routes/user.route.js";
 import adminRoute from "./routes/admin.route.js";
+import orderRoute from "./routes/order.route.js";
+import reviewRoute from "./routes/review.route.js";
+import productRoute from "./routes/product.route.js";
+import cartRoute from "./routes/cart.route.js";
 
 dotenv.config();
 
@@ -41,6 +45,10 @@ app.get("/api/health", (req, res) => {
 app.use("/api/inngest", inngestRoute);
 app.use("/api/users", userRoute);
 app.use("/api/admin", adminRoute);
+app.use("/api/orders", orderRoute);
+app.use("/api/reviews", reviewRoute);
+app.use("/api/products", productRoute);
+app.use("/api/carts", cartRoute);
 
 // 3. Render.com 프로덕션 전용 기능 (Self-Ping Cron & Frontend 정적 서빙)
 if (process.env.NODE_ENV === "production") {

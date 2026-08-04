@@ -1,100 +1,107 @@
-import { useEffect, useState } from "react";
-import { Show, SignInButton, UserButton, useUser } from "@clerk/react";
+import { useState, useEffect } from "react";
+import { Show, useUser } from "@clerk/react";
+import { useMutation } from "@tanstack/react-query";
+import axiosInstance from "./lib/axios";
+import Sidebar from "./components/Sidebar";
+import Header from "./components/Header";
+import LoginView from "./components/LoginView";
+import DashboardPage from "./pages/DashboardPage";
+import ProductsPage from "./pages/ProductsPage";
+import OrdersPage from "./pages/OrdersPage";
+import CustomersPage from "./pages/CustomersPage";
+import LoadingSpinner from "./components/LoadingSpinner";
+
+// axios 기반 유저 동기화 API
+const syncUserApi = async (user) => {
+  const email = user.primaryEmailAddress?.emailAddress || "";
+  const name =
+    user.fullName ||
+    [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+    user.username ||
+    "User";
+  const imageUrl = user.imageUrl || "";
+
+  try {
+    const response = await axiosInstance.post("/api/user/sync", {
+      clerkId: user.id,
+      email,
+      name,
+      imageUrl,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("[User Sync Error]", error);
+    return null;
+  }
+};
 
 const App = () => {
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { isLoaded, isSignedIn, user } = useUser();
-  const [syncStatus, setSyncStatus] = useState("대기 중");
+
+  const { mutate: syncUser } = useMutation({
+    mutationFn: syncUserApi,
+  });
 
   useEffect(() => {
-    const syncUserToMongoDB = async () => {
-      if (isLoaded && isSignedIn && user) {
-        setSyncStatus("MongoDB 동기화 진행 중...");
-        try {
-          const email = user.primaryEmailAddress?.emailAddress || "";
-          const name =
-            user.fullName ||
-            [user.firstName, user.lastName].filter(Boolean).join(" ") ||
-            user.username ||
-            "User";
-          const imageUrl = user.imageUrl || "";
+    if (isLoaded && isSignedIn && user) {
+      syncUser(user);
+    }
+  }, [isLoaded, isSignedIn, user, syncUser]);
 
-          const payload = {
-            clerkId: user.id,
-            email,
-            name,
-            imageUrl,
-          };
+  const renderActivePage = () => {
+    switch (activeTab) {
+      case "dashboard":
+        return <DashboardPage setActiveTab={setActiveTab} />;
+      case "products":
+        return <ProductsPage />;
+      case "orders":
+        return <OrdersPage />;
+      case "customers":
+        return <CustomersPage />;
+      default:
+        return <DashboardPage setActiveTab={setActiveTab} />;
+    }
+  };
 
-          let res = await fetch("/api/user/sync", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          }).catch(() => null);
-
-          if (res && res.ok) {
-            const data = await res.json();
-            if (data.success) {
-              setSyncStatus("✅ MongoDB 유저 동기화 성공!");
-              console.log("[Client Sync] MongoDB 유저 동기화 성공:", data.user);
-            } else {
-              setSyncStatus(`⚠️ 동기화 경고: ${data.message}`);
-            }
-          } else {
-            setSyncStatus("❌ 백엔드 서버(포트 3000) 연결 실패");
-          }
-        } catch (error) {
-          console.error("[Client Sync Error] 백엔드 동기화 예외 발생:", error);
-          setSyncStatus(`❌ 동기화 에러: ${error.message}`);
-        }
-      }
-    };
-    syncUserToMongoDB();
-  }, [isLoaded, isSignedIn, user]);
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-base-300 flex items-center justify-center">
+        <LoadingSpinner message="인증 및 시스템 정보를 로딩하는 중입니다..." />
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding: "30px", fontFamily: "sans-serif" }}>
-      <h1>E-Commerce Store</h1>
-
+    <>
+      {/* 1. Signed-out: 컴포넌트로 분리된 로그인 화면 연동 */}
       <Show when="signed-out">
-        <SignInButton mode="modal">
-          <button
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#4F46E5",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: "16px",
-            }}
-          >
-            로그인 / 회원가입
-          </button>
-        </SignInButton>
+        <LoginView />
       </Show>
 
+      {/* 2. Signed-in: 로그인 상태일 때 반응형 어드민 웹 포털 화면 */}
       <Show when="signed-in">
-        <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-            <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-              환영합니다, {user?.fullName || user?.firstName || "고객님"}!
-            </span>
-            <UserButton />
-          </div>
-          <div
-            style={{
-              padding: "12px",
-              borderRadius: "8px",
-              backgroundColor: "#f3f4f6",
-              border: "1px solid #e5e7eb",
-              fontSize: "14px",
-            }}
-          >
-            <strong>MongoDB 동기화 상태:</strong> {syncStatus}
+        <div className="flex min-h-screen bg-base-300 text-base-content font-sans antialiased">
+          {/* Left Sidebar */}
+          <Sidebar
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            isOpen={isSidebarOpen}
+            setIsOpen={setIsSidebarOpen}
+          />
+
+          {/* Right Main Content Area */}
+          <div className="flex-1 flex flex-col min-w-0 w-full">
+            <Header activeTab={activeTab} setIsSidebarOpen={setIsSidebarOpen} />
+
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-base-200/40">
+              {renderActivePage()}
+            </main>
           </div>
         </div>
       </Show>
-    </div>
+    </>
   );
 };
 

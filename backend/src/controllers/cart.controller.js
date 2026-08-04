@@ -46,6 +46,11 @@ export const addToCart = async (req, res) => {
         message: "존재하지 않는 상품입니다.",
       });
     }
+    if (product.stock <= addQuantity) {
+      return res.status(400).json({
+        message: `재고가 부족합니다. (현재 재고: ${product.stock}개)`,
+      });
+    }
 
     let cart = await Cart.findOne({ userId });
 
@@ -61,7 +66,14 @@ export const addToCart = async (req, res) => {
       );
 
       if (existingItemIndex > -1) {
-        cart.items[existingItemIndex].quantity += addQuantity;
+        const potentialNewQuantity =
+          cart.items[existingItemIndex].quantity + addQuantity;
+        if (potentialNewQuantity > product.stock) {
+          return res.status(400).json({
+            message: `장바구니에 해당 상품을 추가할 경우 재고가 부족합니다. (현재 재고: ${product.stock}개)`,
+          });
+        }
+        cart.items[existingItemIndex].quantity = potentialNewQuantity;
       } else {
         cart.items.push({ productId, quantity: addQuantity });
       }
@@ -96,6 +108,12 @@ export const updateCartItem = async (req, res) => {
       });
     }
 
+    if (newQuantity <= 0) {
+      return res.status(400).json({
+        message: "수량은 1 이상으로 입력해주세요.",
+      });
+    }
+
     const cart = await Cart.findOne({ userId });
     if (!cart) {
       return res.status(404).json({
@@ -113,11 +131,18 @@ export const updateCartItem = async (req, res) => {
       });
     }
 
-    if (newQuantity <= 0) {
-      cart.items.splice(existingItemIndex, 1);
-    } else {
-      cart.items[existingItemIndex].quantity = newQuantity;
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({
+        message: "존재하지 않는 상품입니다.",
+      });
     }
+    if (product.stock <= newQuantity) {
+      return res.status(400).json({
+        message: `장바구니에 해당 상품을 추가할 경우 재고가 부족합니다. (현재 재고: ${product.stock}개)`,
+      });
+    }
+    cart.items[existingItemIndex].quantity = newQuantity;
 
     await cart.save();
     await cart.populate("items.productId");
@@ -184,7 +209,6 @@ export const clearCart = async (req, res) => {
 
     cart.items = [];
     await cart.save();
-    await cart.populate("items.productId");
 
     return res.status(200).json({
       message: "장바구니가 비워졌습니다.",

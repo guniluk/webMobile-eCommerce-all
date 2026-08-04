@@ -1,6 +1,7 @@
 import cloudinary from "../config/cloudinary.js";
 import { Product } from "../models/product.model.js";
 import { Order } from "../models/order.model.js";
+import { User } from "../models/user.model.js";
 
 /**
  * req.files (Multer 폼데이터 파일 업로드) 및 req.body.images (JSON Base64/URL)에서

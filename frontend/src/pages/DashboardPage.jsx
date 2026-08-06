@@ -1,15 +1,19 @@
-import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
-import { fetchDashboardStats, fetchOrders } from "../services/adminApi";
+import { fetchDashboardStats, fetchOrders } from "../services";
 import LoadingSpinner from "../components/LoadingSpinner";
 import EmptyState from "../components/EmptyState";
+import {
+  formatCurrency,
+  formatDate,
+  truncateId,
+  getOrderStatusInfo,
+} from "../lib/util";
 import {
   DollarSign,
   ShoppingBag,
   PackageCheck,
   Users,
-  TrendingUp,
   AlertCircle,
   PackageX,
   ArrowRight,
@@ -35,13 +39,15 @@ const DashboardPage = ({ setActiveTab }) => {
   });
 
   if (isStatsLoading || isOrdersLoading) {
-    return <LoadingSpinner message="대시보드 통계 및 주문 데이터를 로딩하고 있습니다..." />;
+    return (
+      <LoadingSpinner message="대시보드 통계 및 주문 데이터를 로딩하고 있습니다..." />
+    );
   }
 
   if (isStatsError) {
     return (
       <div className="alert alert-error border border-rose-500/30 text-rose-200 text-sm rounded-2xl shadow-lg">
-        <AlertCircle className="w-5 h-5 flex-shrink-0" />
+        <AlertCircle className="w-5 h-5 shrink-0" />
         <span>백엔드 연동 에러: {statsError?.message}</span>
       </div>
     );
@@ -51,10 +57,9 @@ const DashboardPage = ({ setActiveTab }) => {
     {
       titleKo: "총 매출액",
       titleEn: "Total Revenue",
-      value: `₩${(stats?.totalRevenue || 0).toLocaleString()}`,
+      value: formatCurrency(stats?.totalRevenue || 0),
       icon: DollarSign,
       badgeColor: "badge-success",
-      change: "+12.5%",
     },
     {
       titleKo: "총 주문 건수",
@@ -62,7 +67,6 @@ const DashboardPage = ({ setActiveTab }) => {
       value: `${(stats?.totalOrders || 0).toLocaleString()}건`,
       icon: ShoppingBag,
       badgeColor: "badge-primary",
-      change: "+8.2%",
     },
     {
       titleKo: "등록 상품 수",
@@ -70,7 +74,6 @@ const DashboardPage = ({ setActiveTab }) => {
       value: `${(stats?.totalProducts || 0).toLocaleString()}개`,
       icon: PackageCheck,
       badgeColor: "badge-secondary",
-      change: "+4.1%",
     },
     {
       titleKo: "총 고객수",
@@ -78,7 +81,6 @@ const DashboardPage = ({ setActiveTab }) => {
       value: `${(stats?.totalCustomers || 0).toLocaleString()}명`,
       icon: Users,
       badgeColor: "badge-warning",
-      change: "+15.3%",
     },
   ];
 
@@ -93,7 +95,7 @@ const DashboardPage = ({ setActiveTab }) => {
               key={idx}
               className="card bg-base-100 border border-base-300 p-6 shadow-xl relative overflow-hidden transition-all duration-300 hover:border-primary/60 hover:shadow-2xl rounded-3xl"
             >
-              <div className="flex items-start justify-between">
+              <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm font-bold text-base-content/80 leading-snug">
                     <div>{card.titleKo}</div>
@@ -105,17 +107,8 @@ const DashboardPage = ({ setActiveTab }) => {
                     {card.value}
                   </h3>
                 </div>
-                <div className="p-3.5 rounded-2xl shadow-lg flex-shrink-0 bg-primary text-primary-content">
+                <div className="p-3.5 rounded-2xl shadow-lg shrink-0 bg-primary text-primary-content">
                   <Icon className="w-6 h-6" />
-                </div>
-              </div>
-              <div className="mt-4 pt-3 border-t border-base-300 flex items-center justify-between text-xs text-base-content/70">
-                <div className="flex items-center gap-1.5 font-semibold">
-                  <TrendingUp className="w-4 h-4 text-success" />
-                  <span className="font-bold text-success text-sm">
-                    {card.change}
-                  </span>
-                  <span>vs 지난 달</span>
                 </div>
               </div>
             </div>
@@ -124,17 +117,21 @@ const DashboardPage = ({ setActiveTab }) => {
       </div>
 
       {/* Recent Orders Preview & Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
         {/* Recent Orders Table */}
-        <div className="lg:col-span-2 bg-base-100 border border-base-300 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
+        <div className="lg:col-span-2 bg-base-100 border border-base-300 rounded-3xl p-6 shadow-xl flex flex-col justify-between h-full">
           <div>
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-xl font-extrabold text-base-content flex items-center gap-2">
                   <span>최근 주문 내역</span>
-                  <span className="text-sm font-normal text-base-content/60">(Recent Orders)</span>
+                  <span className="text-sm font-normal text-base-content/60">
+                    (Recent Orders)
+                  </span>
                 </h3>
-                <p className="text-xs sm:text-sm text-base-content/70 mt-1">실시간으로 들어온 최신 고객 주문 정보입니다.</p>
+                <p className="text-xs sm:text-sm text-base-content/70 mt-1">
+                  실시간으로 들어온 최신 고객 주문 정보입니다.
+                </p>
               </div>
               {recentOrders && recentOrders.length > 0 && (
                 <button
@@ -154,37 +151,68 @@ const DashboardPage = ({ setActiveTab }) => {
                     <tr>
                       <th className="py-3.5 px-4 rounded-l-xl">주문 번호</th>
                       <th className="py-3.5 px-4">고객 정보</th>
+                      <th className="py-3.5 px-4">주문 상품 (Items)</th>
+                      <th className="py-3.5 px-4">주문 일시 (Date)</th>
                       <th className="py-3.5 px-4">결제 금액</th>
                       <th className="py-3.5 px-4 rounded-r-xl">주문 상태</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-base-300">
-                    {recentOrders.slice(0, 5).map((order) => (
-                      <tr key={order._id} className="hover:bg-base-200/60 transition-colors">
-                        <td className="font-mono text-base-content/70 font-semibold">
-                          #{order._id.substring(order._id.length - 8)}
-                        </td>
-                        <td className="font-semibold text-base-content">
-                          {order.userId?.name || "고객 회원"}
-                        </td>
-                        <td className="font-bold text-base-content text-base">
-                          ₩{(order.totalPrice || 0).toLocaleString()}
-                        </td>
-                        <td>
-                          <span
-                            className={`badge badge-md font-bold uppercase ${
-                              order.status === "delivered"
-                                ? "badge-success"
-                                : order.status === "shipped"
-                                ? "badge-info"
-                                : "badge-warning"
-                            }`}
-                          >
-                            {order.status || "pending"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {recentOrders.slice(0, 5).map((order) => {
+                      const { badgeClass, label } = getOrderStatusInfo(
+                        order.status
+                      );
+                      return (
+                        <tr
+                          key={order._id}
+                          className="hover:bg-base-200/60 transition-colors"
+                        >
+                          <td className="font-mono text-base-content/70 font-semibold">
+                            {truncateId(order._id)}
+                          </td>
+                          <td className="font-semibold text-base-content">
+                            <div>{order.userId?.name || "고객 회원"}</div>
+                            {order.userId?.email && (
+                              <div className="text-[11px] text-base-content/50 font-normal truncate max-w-30">
+                                {order.userId.email}
+                              </div>
+                            )}
+                          </td>
+                          <td className="text-xs text-base-content/80 max-w-50">
+                            {order.orderItems && order.orderItems.length > 0 ? (
+                              <div className="space-y-0.5">
+                                {order.orderItems.map((item, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="truncate font-medium"
+                                  >
+                                    • {item.productId?.name || "상품"}{" "}
+                                    <span className="text-primary font-bold">
+                                      x{item.quantity}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-base-content/40">-</span>
+                            )}
+                          </td>
+                          <td className="text-xs text-base-content/70 font-medium whitespace-nowrap">
+                            {formatDate(order.createdAt)}
+                          </td>
+                          <td className="font-bold text-base-content text-base">
+                            {formatCurrency(order.totalPrice)}
+                          </td>
+                          <td>
+                            <span
+                              className={`badge badge-md font-bold uppercase ${badgeClass}`}
+                            >
+                              {label}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -201,13 +229,17 @@ const DashboardPage = ({ setActiveTab }) => {
         </div>
 
         {/* Quick Management Panel */}
-        <div className="bg-base-100 border border-base-300 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
+        <div className="bg-base-100 border border-base-300 rounded-3xl p-6 shadow-xl flex flex-col justify-between h-full">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className="w-5 h-5 text-primary" />
-              <h3 className="text-xl font-extrabold text-base-content">빠른 작업 (Quick Actions)</h3>
+              <h3 className="text-xl font-extrabold text-base-content">
+                빠른 작업 (Quick Actions)
+              </h3>
             </div>
-            <p className="text-xs sm:text-sm text-base-content/70 mb-6">자주 사용하는 어드민 핵심 바로가기 메뉴</p>
+            <p className="text-xs sm:text-sm text-base-content/70 mb-6">
+              자주 사용하는 어드민 핵심 바로가기 메뉴
+            </p>
 
             <div className="space-y-3.5">
               <button
@@ -215,8 +247,12 @@ const DashboardPage = ({ setActiveTab }) => {
                 className="w-full p-4 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-2xl text-left flex items-center justify-between group transition-all cursor-pointer shadow-sm"
               >
                 <div>
-                  <h4 className="text-base font-bold text-primary">신규 상품 등록하기</h4>
-                  <p className="text-xs text-base-content/70 mt-1">새로운 카탈로그 상품 추가 및 관리</p>
+                  <h4 className="text-base font-bold text-primary">
+                    신규 상품 등록하기
+                  </h4>
+                  <p className="text-xs text-base-content/70 mt-1">
+                    새로운 카탈로그 상품 추가 및 관리
+                  </p>
                 </div>
                 <ArrowRight className="w-5 h-5 text-primary group-hover:translate-x-1 transition-transform" />
               </button>
@@ -226,8 +262,12 @@ const DashboardPage = ({ setActiveTab }) => {
                 className="w-full p-4 bg-secondary/10 hover:bg-secondary/20 border border-secondary/30 rounded-2xl text-left flex items-center justify-between group transition-all cursor-pointer shadow-sm"
               >
                 <div>
-                  <h4 className="text-base font-bold text-secondary">주문/배송 상태 관리</h4>
-                  <p className="text-xs text-base-content/70 mt-1">배송 대기 중인 고객 주문 처리</p>
+                  <h4 className="text-base font-bold text-secondary">
+                    주문/배송 상태 관리
+                  </h4>
+                  <p className="text-xs text-base-content/70 mt-1">
+                    배송 대기 중인 고객 주문 처리
+                  </p>
                 </div>
                 <ArrowRight className="w-5 h-5 text-secondary group-hover:translate-x-1 transition-transform" />
               </button>
@@ -237,18 +277,16 @@ const DashboardPage = ({ setActiveTab }) => {
                 className="w-full p-4 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-2xl text-left flex items-center justify-between group transition-all cursor-pointer shadow-sm"
               >
                 <div>
-                  <h4 className="text-base font-bold text-accent">고객 회원 조회</h4>
-                  <p className="text-xs text-base-content/70 mt-1">가입된 회원 목록 및 상세 확인</p>
+                  <h4 className="text-base font-bold text-accent">
+                    고객 회원 조회
+                  </h4>
+                  <p className="text-xs text-base-content/70 mt-1">
+                    가입된 회원 목록 및 상세 확인
+                  </p>
                 </div>
                 <ArrowRight className="w-5 h-5 text-accent group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
-          </div>
-
-          <div className="mt-6 pt-4 border-t border-base-300 text-center">
-            <span className="badge badge-ghost badge-md text-xs text-base-content/70 font-semibold">
-              시스템 상태: 정상 가동 중 (System Normal)
-            </span>
           </div>
         </div>
       </div>

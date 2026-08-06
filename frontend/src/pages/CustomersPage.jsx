@@ -1,32 +1,52 @@
-import React, { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
-import { fetchCustomers } from "../services/adminApi";
+import { fetchCustomers } from "../services";
 import LoadingSpinner from "../components/LoadingSpinner";
 import EmptyState from "../components/EmptyState";
-import { Users, Search, Mail, Calendar, UserCheck, AlertCircle, UserX } from "lucide-react";
+import { formatDate } from "../lib/util";
+import {
+  Search,
+  Mail,
+  Calendar,
+  UserCheck,
+  AlertCircle,
+  UserX,
+} from "lucide-react";
 
 const CustomersPage = () => {
   const { getToken } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: customers, isLoading, isError, error } = useQuery({
+  const {
+    data: customers,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["adminCustomers"],
     queryFn: () => fetchCustomers(getToken),
   });
 
-  const filteredCustomers = (customers || []).filter((cust) => {
-    const nameMatch = cust.name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const emailMatch = cust.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    return nameMatch || emailMatch;
-  });
+  const filteredCustomers = useMemo(() => {
+    return (customers || []).filter((cust) => {
+      const nameMatch = cust.name
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase());
+      const emailMatch = cust.email
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase());
+      return nameMatch || emailMatch;
+    });
+  }, [customers, searchTerm]);
 
-  if (isLoading) return <LoadingSpinner message="고객 회원 데이터를 불러오는 중입니다..." />;
+  if (isLoading)
+    return <LoadingSpinner message="고객 회원 데이터를 불러오는 중입니다..." />;
 
   if (isError) {
     return (
-      <div className="alert alert-error border border-rose-500/30 text-rose-200">
-        <AlertCircle className="w-5 h-5 flex-shrink-0" />
+      <div className="alert alert-error border border-error/30 text-error-content shadow-lg rounded-2xl">
+        <AlertCircle className="w-5 h-5 shrink-0" />
         <span>에러가 발생했습니다: {error?.message}</span>
       </div>
     );
@@ -35,20 +55,24 @@ const CustomersPage = () => {
   return (
     <div className="space-y-6">
       {/* Search Header */}
-      <div className="flex items-center justify-between bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-xl">
+      <div className="flex items-center justify-between bg-base-100 border border-base-300 p-5 rounded-2xl shadow-xl">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 z-10" />
+          <Search className="w-4 h-4 text-base-content/50 absolute left-3.5 top-1/2 -translate-y-1/2 z-10" />
           <input
             type="text"
             placeholder="이름 또는 이메일 검색..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="input input-sm input-bordered w-full bg-slate-800 text-slate-200 text-xs pl-9 pr-4"
+            className="input input-sm input-bordered w-full bg-base-200 text-base-content text-xs pl-9 pr-4"
           />
         </div>
 
-        <div className="text-xs text-slate-400 font-medium hidden sm:block">
-          전체 회원 수: <span className="badge badge-warning badge-sm font-bold">{filteredCustomers.length}</span>명
+        <div className="text-xs text-base-content/70 font-medium hidden sm:flex items-center gap-1.5">
+          <span>전체 회원 수:</span>
+          <span className="badge badge-warning badge-sm font-bold px-2.5 py-0.5 mx-1">
+            {filteredCustomers.length}
+          </span>
+          <span>명</span>
         </div>
       </div>
 
@@ -58,25 +82,33 @@ const CustomersPage = () => {
           {filteredCustomers.map((customer) => (
             <div
               key={customer._id || customer.email}
-              className="card bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl hover:border-slate-700 transition-all duration-300 group"
+              className="card bg-base-100 border border-base-300 rounded-2xl shadow-xl hover:border-primary/50 transition-all duration-300 group"
             >
               <div className="card-body p-6 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center gap-4 mb-4">
                     <div className="avatar">
                       {customer.imageUrl ? (
-                        <div className="w-14 h-14 rounded-2xl border border-slate-700 shadow-md group-hover:scale-105 transition-transform">
-                          <img src={customer.imageUrl} alt={customer.name} />
+                        <div className="w-14 h-14 rounded-2xl border border-base-300 shadow-md group-hover:scale-105 transition-transform overflow-hidden">
+                          <img
+                            src={customer.imageUrl}
+                            alt={customer.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.style.display = "none";
+                            }}
+                          />
                         </div>
                       ) : (
-                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:scale-105 transition-transform">
+                        <div className="w-14 h-14 rounded-2xl bg-primary text-primary-content flex items-center justify-center font-bold text-lg shadow-md group-hover:scale-105 transition-transform">
                           {customer.name?.charAt(0) || "U"}
                         </div>
                       )}
                     </div>
 
                     <div>
-                      <h4 className="text-base font-bold text-slate-100 group-hover:text-amber-400 transition-colors">
+                      <h4 className="text-base font-bold text-base-content group-hover:text-primary transition-colors">
                         {customer.name || "익명 회원"}
                       </h4>
                       <span className="badge badge-success badge-sm gap-1 mt-1 font-semibold">
@@ -85,28 +117,30 @@ const CustomersPage = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-2 border-t border-slate-800/80 pt-4 text-xs text-slate-400">
+                  <div className="space-y-2 border-t border-base-300 pt-4 text-xs text-base-content/70">
                     <div className="flex items-center gap-2">
-                      <Mail className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
-                      <span className="truncate text-slate-300 font-medium">
+                      <Mail className="w-3.5 h-3.5 text-base-content/50 shrink-0" />
+                      <span className="truncate text-base-content font-medium">
                         {customer.email || "이메일 정보 없음"}
                       </span>
                     </div>
                     {customer.createdAt && (
                       <div className="flex items-center gap-2">
-                        <Calendar className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
-                        <span className="text-slate-400">
-                          가입일: {new Date(customer.createdAt).toLocaleDateString()}
+                        <Calendar className="w-3.5 h-3.5 text-base-content/50 shrink-0" />
+                        <span className="text-base-content/70">
+                          가입일: {formatDate(customer.createdAt)}
                         </span>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="card-actions justify-end mt-6 pt-4 border-t border-slate-800/80">
+                <div className="card-actions justify-end mt-6 pt-4 border-t border-base-300">
                   <button
-                    onClick={() => alert(`고객 [${customer.name}] 상세 정보 페이지 준비 중`)}
-                    className="btn btn-ghost btn-xs border border-slate-700 text-slate-300 font-semibold"
+                    onClick={() =>
+                      alert(`고객 [${customer.name}] 상세 정보 페이지 준비 중`)
+                    }
+                    className="btn btn-ghost btn-xs border border-base-300 text-base-content font-semibold hover:border-primary"
                   >
                     상세 보기
                   </button>

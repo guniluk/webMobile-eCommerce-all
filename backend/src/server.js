@@ -5,6 +5,8 @@ import { clerkMiddleware } from "@clerk/express";
 import path from "path";
 import { fileURLToPath } from "url";
 
+dotenv.config();
+
 import connectDB from "./config/connectDB.js";
 import inngestRoute from "./routes/inngest.route.js";
 import { initKeepAlive } from "./utils/cronKeepAlive.js";
@@ -14,8 +16,6 @@ import orderRoute from "./routes/order.route.js";
 import reviewRoute from "./routes/review.route.js";
 import productRoute from "./routes/product.route.js";
 import cartRoute from "./routes/cart.route.js";
-
-dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,8 +30,8 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(clerkMiddleware()); // req.auth 주입
 
 // 1. Health check 엔드포인트

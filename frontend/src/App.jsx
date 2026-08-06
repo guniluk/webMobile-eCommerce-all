@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Show, useUser } from "@clerk/react";
 import { useMutation } from "@tanstack/react-query";
-import axiosInstance from "./lib/axios";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import LoginView from "./components/LoginView";
@@ -11,7 +10,9 @@ import OrdersPage from "./pages/OrdersPage";
 import CustomersPage from "./pages/CustomersPage";
 import LoadingSpinner from "./components/LoadingSpinner";
 
-// axios 기반 유저 동기화 API
+import { syncUser as syncUserApiService } from "./services";
+
+// services/userApi 기반 유저 동기화 연동
 const syncUserApi = async (user) => {
   const email = user.primaryEmailAddress?.emailAddress || "";
   const name =
@@ -22,13 +23,12 @@ const syncUserApi = async (user) => {
   const imageUrl = user.imageUrl || "";
 
   try {
-    const response = await axiosInstance.post("/api/user/sync", {
+    return await syncUserApiService({
       clerkId: user.id,
       email,
       name,
       imageUrl,
     });
-    return response.data;
   } catch (error) {
     console.error("[User Sync Error]", error);
     return null;
@@ -38,7 +38,12 @@ const syncUserApi = async (user) => {
 const App = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const { isLoaded, isSignedIn, user } = useUser();
+
+  const toggleSidebarCollapse = () => {
+    setIsSidebarCollapsed((prev) => !prev);
+  };
 
   const { mutate: syncUser } = useMutation({
     mutationFn: syncUserApi,
@@ -48,7 +53,7 @@ const App = () => {
     if (isLoaded && isSignedIn && user) {
       syncUser(user);
     }
-  }, [isLoaded, isSignedIn, user, syncUser]);
+  }, [isLoaded, isSignedIn, user?.id]);
 
   const renderActivePage = () => {
     switch (activeTab) {
@@ -82,18 +87,24 @@ const App = () => {
 
       {/* 2. Signed-in: 로그인 상태일 때 반응형 어드민 웹 포털 화면 */}
       <Show when="signed-in">
-        <div className="flex min-h-screen bg-base-300 text-base-content font-sans antialiased">
+        <div className="flex h-screen overflow-hidden bg-base-300 text-base-content font-sans antialiased">
           {/* Left Sidebar */}
           <Sidebar
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             isOpen={isSidebarOpen}
             setIsOpen={setIsSidebarOpen}
+            isCollapsed={isSidebarCollapsed}
           />
 
           {/* Right Main Content Area */}
-          <div className="flex-1 flex flex-col min-w-0 w-full">
-            <Header activeTab={activeTab} setIsSidebarOpen={setIsSidebarOpen} />
+          <div className="flex-1 flex flex-col h-screen min-w-0 w-full transition-all duration-300 overflow-hidden">
+            <Header
+              activeTab={activeTab}
+              setIsSidebarOpen={setIsSidebarOpen}
+              isSidebarCollapsed={isSidebarCollapsed}
+              toggleSidebarCollapse={toggleSidebarCollapse}
+            />
 
             <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-base-200/40">
               {renderActivePage()}

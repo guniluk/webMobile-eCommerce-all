@@ -3,6 +3,7 @@ import {
   createProduct,
   getAllProducts,
   updateProduct,
+  deleteProduct,
   getAllOrders,
   updateOrderStatus,
   getAllCustomers,
@@ -18,6 +19,7 @@ router.use(protectRoute, adminOnly);
 router.post("/products", uploadMultipleImages, createProduct);
 router.get("/products", getAllProducts);
 router.put("/products/:productId", uploadMultipleImages, updateProduct);
+router.delete("/products/:productId", deleteProduct);
 
 router.get("/orders", getAllOrders);
 router.patch("/orders/:orderId/status", updateOrderStatus);

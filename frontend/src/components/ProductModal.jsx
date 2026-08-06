@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import { X, Upload, PackagePlus, Edit, ImagePlus, Trash2, Link } from "lucide-react";
 
-const ProductModal = ({ isOpen, onClose, onSubmit, initialData, isSubmitting }) => {
+const ProductModal = memo(({ isOpen, onClose, onSubmit, initialData, isSubmitting }) => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -15,29 +15,35 @@ const ProductModal = ({ isOpen, onClose, onSubmit, initialData, isSubmitting }) 
   const [urlInput, setUrlInput] = useState("");
   const fileInputRef = useRef(null);
 
+  // 모달 열림/닫힘 및 수정 대상 변경 시 폼 상태 안전 초기화 (useEffect 사용)
   useEffect(() => {
-    if (initialData) {
-      setFormData({
-        name: initialData.name || "",
-        description: initialData.description || "",
-        price: initialData.price || "",
-        stock: initialData.stock || "",
-        category: initialData.category || "",
-        images: initialData.images && initialData.images.length > 0 ? initialData.images : [],
-      });
-    } else {
-      setFormData({
-        name: "",
-        description: "",
-        price: "",
-        stock: "",
-        category: "",
-        images: [],
-      });
+    if (isOpen) {
+      if (initialData) {
+        setFormData({
+          name: initialData.name || "",
+          description: initialData.description || "",
+          price: initialData.price || "",
+          stock: initialData.stock || "",
+          category: initialData.category || "",
+          images:
+            initialData.images && initialData.images.length > 0
+              ? [...initialData.images]
+              : [],
+        });
+      } else {
+        setFormData({
+          name: "",
+          description: "",
+          price: "",
+          stock: "",
+          category: "",
+          images: [],
+        });
+      }
+      setUrlInput("");
+      setUploadTab("file");
     }
-    setUrlInput("");
-    setUploadTab("file");
-  }, [initialData, isOpen]);
+  }, [isOpen, initialData]);
 
   if (!isOpen) return null;
 
@@ -369,6 +375,8 @@ const ProductModal = ({ isOpen, onClose, onSubmit, initialData, isSubmitting }) 
       </div>
     </div>
   );
-};
+});
+
+ProductModal.displayName = "ProductModal";
 
 export default ProductModal;

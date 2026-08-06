@@ -1,11 +1,17 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
-import { fetchProducts, createProduct, updateProduct } from "../services/adminApi";
+import {
+  fetchProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+} from "../services";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ProductModal from "../components/ProductModal";
 import EmptyState from "../components/EmptyState";
-import { Plus, Edit, Search, PackageSearch } from "lucide-react";
+import { formatCurrency } from "../lib/util";
+import { Plus, Edit, Trash2, Search, PackageSearch } from "lucide-react";
 
 const ProductsPage = () => {
   const { getToken } = useAuth();
@@ -15,7 +21,12 @@ const ProductsPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 
-  const { data: products, isLoading, isError, error } = useQuery({
+  const {
+    data: products,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["adminProducts"],
     queryFn: () => fetchProducts(getToken),
   });
@@ -34,7 +45,8 @@ const ProductsPage = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ productId, productData }) => updateProduct({ productId, productData, getToken }),
+    mutationFn: ({ productId, productData }) =>
+      updateProduct({ productId, productData, getToken }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["adminProducts"] });
       queryClient.invalidateQueries({ queryKey: ["adminStats"] });
@@ -47,37 +59,70 @@ const ProductsPage = () => {
     },
   });
 
-  const handleOpenCreateModal = () => {
-    setEditingProduct(null);
-    setIsModalOpen(true);
-  };
-
-  const handleOpenEditModal = (product) => {
-    setEditingProduct(product);
-    setIsModalOpen(true);
-  };
-
-  const handleFormSubmit = (formData) => {
-    if (editingProduct) {
-      updateMutation.mutate({
-        productId: editingProduct._id,
-        productData: formData,
-      });
-    } else {
-      createMutation.mutate(formData);
-    }
-  };
-
-  const filteredProducts = (products || []).filter((product) => {
-    const matchesSearch =
-      product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.category?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "ALL" || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+  const deleteMutation = useMutation({
+    mutationFn: (productId) => deleteProduct({ productId, getToken }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminProducts"] });
+      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
+      alert("상품이 성공적으로 삭제되었습니다!");
+    },
+    onError: (err) => {
+      alert(`상품 삭제 실패: ${err.message}`);
+    },
   });
 
-  if (isLoading) return <LoadingSpinner message="상품 카탈로그 데이터를 가져오는 중입니다..." />;
+  const handleOpenCreateModal = useCallback(() => {
+    setEditingProduct(null);
+    setIsModalOpen(true);
+  }, []);
+
+  const handleOpenEditModal = useCallback((product) => {
+    setEditingProduct(product);
+    setIsModalOpen(true);
+  }, []);
+
+  const handleDeleteProduct = useCallback(
+    (productId, productName) => {
+      if (window.confirm(`정말 [${productName}] 상품을 삭제하시겠습니까?`)) {
+        deleteMutation.mutate(productId);
+      }
+    },
+    [deleteMutation]
+  );
+
+  const handleFormSubmit = useCallback(
+    (formData) => {
+      if (editingProduct) {
+        updateMutation.mutate({
+          productId: editingProduct._id,
+          productData: formData,
+        });
+      } else {
+        createMutation.mutate(formData);
+      }
+    },
+    [editingProduct, updateMutation, createMutation]
+  );
+
+  const handleModalClose = useCallback(() => {
+    setIsModalOpen(false);
+  }, []);
+
+  const filteredProducts = useMemo(() => {
+    return (products || []).filter((product) => {
+      const matchesSearch =
+        product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.category?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory =
+        selectedCategory === "ALL" || product.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, searchTerm, selectedCategory]);
+
+  if (isLoading)
+    return (
+      <LoadingSpinner message="상품 카탈로그 데이터를 가져오는 중입니다..." />
+    );
 
   if (isError) {
     return (
@@ -145,15 +190,33 @@ const ProductsPage = () => {
               </thead>
               <tbody className="divide-y divide-base-300">
                 {filteredProducts.map((product) => (
-                  <tr key={product._id} className="hover:bg-base-200/60 transition-colors">
+                  <tr
+                    key={product._id}
+                    className="hover:bg-base-200/60 transition-colors"
+                  >
                     <td className="py-3 px-6">
-                      <div className="avatar">
-                        <div className="w-12 h-12 rounded-xl border border-base-300">
+                      <div className="avatar relative group">
+                        <div className="w-12 h-12 rounded-xl border border-base-300 overflow-hidden bg-base-200 shadow-sm">
                           <img
-                            src={product.images?.[0] || "https://via.placeholder.com/80"}
+                            src={
+                              Array.isArray(product.images) && product.images.length > 0
+                                ? product.images[0]
+                                : "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=150&auto=format&fit=crop&q=80"
+                            }
                             alt={product.name}
+                            className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src =
+                                "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=150&auto=format&fit=crop&q=80";
+                            }}
                           />
                         </div>
+                        {Array.isArray(product.images) && product.images.length > 0 && (
+                          <span className="badge badge-neutral badge-xs absolute -top-1 -right-1 font-bold shadow-sm">
+                            {product.images.length}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="py-3 px-6">
@@ -170,7 +233,7 @@ const ProductsPage = () => {
                       </span>
                     </td>
                     <td className="py-3 px-6 font-bold text-base-content">
-                      ₩{(product.price || 0).toLocaleString()}
+                      {formatCurrency(product.price)}
                     </td>
                     <td className="py-3 px-6">
                       <span
@@ -184,13 +247,27 @@ const ProductsPage = () => {
                       </span>
                     </td>
                     <td className="py-3 px-6 text-right">
-                      <button
-                        onClick={() => handleOpenEditModal(product)}
-                        className="btn btn-ghost btn-xs border border-base-300 font-medium inline-flex items-center gap-1.5"
-                      >
-                        <Edit className="w-3.5 h-3.5" />
-                        <span>수정</span>
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleOpenEditModal(product)}
+                          className="btn btn-ghost btn-xs border border-base-300 font-medium inline-flex items-center gap-1 hover:border-primary hover:text-primary transition-colors cursor-pointer"
+                          title="상품 정보 수정"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                          <span>수정</span>
+                        </button>
+                        <button
+                          onClick={() =>
+                            handleDeleteProduct(product._id, product.name)
+                          }
+                          disabled={deleteMutation.isPending}
+                          className="btn btn-ghost btn-xs border border-base-300 text-error hover:bg-error/15 hover:border-error font-medium inline-flex items-center gap-1 transition-colors cursor-pointer"
+                          title="상품 삭제"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>삭제</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -211,7 +288,7 @@ const ProductsPage = () => {
       {/* Modal */}
       <ProductModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleModalClose}
         onSubmit={handleFormSubmit}
         initialData={editingProduct}
         isSubmitting={createMutation.isPending || updateMutation.isPending}

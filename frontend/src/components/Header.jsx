@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell, Search, Menu, Palette } from "lucide-react";
+import { Bell, Search, Menu, Palette, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 const tabNames = {
   dashboard: "Dashboard Overview",
@@ -19,7 +19,12 @@ const themes = [
   "dracula",
 ];
 
-const Header = ({ activeTab, setIsSidebarOpen }) => {
+const Header = ({
+  activeTab,
+  setIsSidebarOpen,
+  isSidebarCollapsed,
+  toggleSidebarCollapse,
+}) => {
   const [currentTheme, setCurrentTheme] = useState(() => {
     return localStorage.getItem("daisyui-theme") || "forest";
   });
@@ -37,6 +42,23 @@ const Header = ({ activeTab, setIsSidebarOpen }) => {
   return (
     <header className="h-16 border-b border-base-300 bg-base-100/90 backdrop-blur-md px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20 text-base-content shadow-sm">
       <div className="flex items-center gap-3">
+        {/* Simple Sidebar Toggle Icon Button (Desktop) */}
+        <button
+          onClick={toggleSidebarCollapse}
+          className="hidden lg:flex btn btn-ghost btn-square btn-sm border border-base-300 text-base-content/80 hover:text-primary hover:border-primary/40 transition-all duration-200 cursor-pointer shadow-sm"
+          title={
+            isSidebarCollapsed
+              ? "사이드바 전체 펼치기"
+              : "사이드바 아이콘만 축소"
+          }
+        >
+          {isSidebarCollapsed ? (
+            <PanelLeftOpen className="w-5 h-5" />
+          ) : (
+            <PanelLeftClose className="w-5 h-5" />
+          )}
+        </button>
+
         {/* Mobile Hamburger Toggle */}
         <button
           onClick={() => setIsSidebarOpen(true)}
@@ -46,7 +68,7 @@ const Header = ({ activeTab, setIsSidebarOpen }) => {
           <Menu className="w-5 h-5" />
         </button>
 
-        <h2 className="text-base sm:text-xl font-extrabold text-base-content tracking-tight truncate">
+        <h2 className="text-base sm:text-xl font-extrabold text-base-content tracking-tight truncate pl-1">
           {tabNames[activeTab] || "Admin Portal"}
         </h2>
       </div>
@@ -71,16 +93,27 @@ const Header = ({ activeTab, setIsSidebarOpen }) => {
             className="select select-ghost select-xs text-xs font-bold text-base-content focus:outline-none cursor-pointer capitalize"
           >
             {themes.map((th) => (
-              <option key={th} value={th} className="bg-base-100 text-base-content capitalize font-medium">
+              <option
+                key={th}
+                value={th}
+                className="bg-base-100 text-base-content capitalize font-medium"
+              >
                 Theme: {th}
               </option>
             ))}
           </select>
         </div>
 
-        <button className="btn btn-ghost btn-circle btn-sm text-base-content/70 hover:text-base-content border border-base-300 relative">
+        {/* Notification Bell Button with smaller circle dot indicator */}
+        <button
+          className="btn btn-ghost btn-circle btn-sm text-base-content/70 hover:text-base-content border border-base-300 relative shrink-0"
+          title="Notifications"
+        >
           <Bell className="w-4 h-4" />
-          <span className="badge badge-xs badge-error absolute -top-1 -right-1"></span>
+          <span className="absolute top-1 right-1 flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-error ring-2 ring-base-100"></span>
+          </span>
         </button>
       </div>
     </header>

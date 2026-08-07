@@ -53,7 +53,7 @@ const App = () => {
     if (isLoaded && isSignedIn && user) {
       syncUser(user);
     }
-  }, [isLoaded, isSignedIn, user?.id]);
+  }, [isLoaded, isSignedIn, user, syncUser]);
 
   const renderActivePage = () => {
     switch (activeTab) {

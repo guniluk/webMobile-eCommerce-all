@@ -9,9 +9,11 @@ import {
   Search,
   Mail,
   Calendar,
-  UserCheck,
-  AlertCircle,
+  MapPin,
+  Heart,
   UserX,
+  AlertCircle,
+  Users,
 } from "lucide-react";
 
 const CustomersPage = () => {
@@ -40,6 +42,19 @@ const CustomersPage = () => {
     });
   }, [customers, searchTerm]);
 
+  // 주소 포맷팅 헬퍼 함수
+  const formatAddress = (addresses) => {
+    if (!addresses || addresses.length === 0) return null;
+    const defaultAddr = addresses.find((a) => a.isDefault) || addresses[0];
+    if (!defaultAddr) return null;
+    const parts = [
+      defaultAddr.streetAddress,
+      defaultAddr.city,
+      defaultAddr.state,
+    ].filter(Boolean);
+    return parts.join(", ");
+  };
+
   if (isLoading)
     return <LoadingSpinner message="고객 회원 데이터를 불러오는 중입니다..." />;
 
@@ -54,8 +69,8 @@ const CustomersPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Search Header */}
-      <div className="flex items-center justify-between bg-base-100 border border-base-300 p-5 rounded-2xl shadow-xl">
+      {/* Top Bar with Search & Customer Counter */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-base-100 border border-base-300 p-5 rounded-2xl shadow-xl">
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-base-content/50 absolute left-3.5 top-1/2 -translate-y-1/2 z-10" />
           <input
@@ -67,87 +82,122 @@ const CustomersPage = () => {
           />
         </div>
 
-        <div className="text-xs text-base-content/70 font-medium hidden sm:flex items-center gap-1.5">
+        <div className="text-xs text-base-content/70 font-medium flex items-center gap-1.5 self-end sm:self-auto">
+          <Users className="w-4 h-4 text-primary" />
           <span>전체 회원 수:</span>
-          <span className="badge badge-warning badge-sm font-bold px-2.5 py-0.5 mx-1">
+          <span className="badge badge-primary badge-sm font-bold px-2.5 py-0.5 mx-1">
             {filteredCustomers.length}
           </span>
           <span>명</span>
         </div>
       </div>
 
-      {/* Customer Grid Cards or Empty State */}
+      {/* Customers Table or Empty State */}
       {filteredCustomers.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCustomers.map((customer) => (
-            <div
-              key={customer._id || customer.email}
-              className="card bg-base-100 border border-base-300 rounded-2xl shadow-xl hover:border-primary/50 transition-all duration-300 group"
-            >
-              <div className="card-body p-6 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="avatar">
-                      {customer.imageUrl ? (
-                        <div className="w-14 h-14 rounded-2xl border border-base-300 shadow-md group-hover:scale-105 transition-transform overflow-hidden">
-                          <img
-                            src={customer.imageUrl}
-                            alt={customer.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.style.display = "none";
-                            }}
-                          />
+        <div className="bg-base-100 border border-base-300 rounded-2xl overflow-hidden shadow-xl">
+          <div className="overflow-x-auto w-full">
+            <table className="table table-sm text-xs text-base-content min-w-[650px] w-full">
+              <thead className="text-[11px] uppercase bg-base-200 text-base-content/80 border-b border-base-300">
+                <tr>
+                  <th className="py-4 px-6 w-1/4">Customer</th>
+                  <th className="py-4 px-6 w-1/4">Email</th>
+                  <th className="py-4 px-6 w-1/3">Address</th>
+                  <th className="py-4 px-6 whitespace-nowrap">Wish List</th>
+                  <th className="py-4 px-6 text-right whitespace-nowrap">Joined Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-base-300">
+                {filteredCustomers.map((customer) => {
+                  const addressStr = formatAddress(customer.addresses);
+                  const wishListCount = customer.wishList?.length || 0;
+
+                  return (
+                    <tr
+                      key={customer._id || customer.email}
+                      className="hover:bg-base-200/60 transition-colors"
+                    >
+                      {/* Customer Column */}
+                      <td className="py-4 px-6 max-w-[200px]">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="avatar shrink-0">
+                            {customer.imageUrl ? (
+                              <div className="w-10 h-10 rounded-full border border-base-300 shadow-sm overflow-hidden">
+                                <img
+                                  src={customer.imageUrl}
+                                  alt={customer.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.style.display = "none";
+                                  }}
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-sm shadow-sm border border-primary/20">
+                                {customer.name?.charAt(0)?.toUpperCase() || "U"}
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div
+                              className="font-bold text-base-content text-sm truncate"
+                              title={customer.name || "익명 회원"}
+                            >
+                              {customer.name || "익명 회원"}
+                            </div>
+                          </div>
                         </div>
-                      ) : (
-                        <div className="w-14 h-14 rounded-2xl bg-primary text-primary-content flex items-center justify-center font-bold text-lg shadow-md group-hover:scale-105 transition-transform">
-                          {customer.name?.charAt(0) || "U"}
+                      </td>
+
+                      {/* Email Column */}
+                      <td className="py-4 px-6 max-w-[220px]">
+                        <div
+                          className="flex items-center gap-2 text-base-content/80 font-medium min-w-0"
+                          title={customer.email || "-"}
+                        >
+                          <Mail className="w-3.5 h-3.5 text-base-content/40 shrink-0" />
+                          <span className="truncate">{customer.email || "-"}</span>
                         </div>
-                      )}
-                    </div>
+                      </td>
 
-                    <div>
-                      <h4 className="text-base font-bold text-base-content group-hover:text-primary transition-colors">
-                        {customer.name || "익명 회원"}
-                      </h4>
-                      <span className="badge badge-success badge-sm gap-1 mt-1 font-semibold">
-                        <UserCheck className="w-3 h-3" /> Active Member
-                      </span>
-                    </div>
-                  </div>
+                      {/* Address Column */}
+                      <td className="py-4 px-6 max-w-[260px]">
+                        {addressStr ? (
+                          <div
+                            className="flex items-start gap-1.5 text-base-content/80 min-w-0"
+                            title={addressStr}
+                          >
+                            <MapPin className="w-3.5 h-3.5 text-primary/70 shrink-0 mt-0.5" />
+                            <span className="truncate">{addressStr}</span>
+                          </div>
+                        ) : (
+                          <span className="text-base-content/40 italic whitespace-nowrap">주소 미등록</span>
+                        )}
+                      </td>
 
-                  <div className="space-y-2 border-t border-base-300 pt-4 text-xs text-base-content/70">
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-3.5 h-3.5 text-base-content/50 shrink-0" />
-                      <span className="truncate text-base-content font-medium">
-                        {customer.email || "이메일 정보 없음"}
-                      </span>
-                    </div>
-                    {customer.createdAt && (
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-3.5 h-3.5 text-base-content/50 shrink-0" />
-                        <span className="text-base-content/70">
-                          가입일: {formatDate(customer.createdAt)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                      {/* Wish List Column (Theme 메인 primary 색상 연동) */}
+                      <td className="py-4 px-6 whitespace-nowrap shrink-0">
+                        <div className="flex items-center gap-1">
+                          <span className="badge badge-primary/15 text-primary border border-primary/30 badge-sm font-semibold gap-1 px-2.5 py-3">
+                            <Heart className="w-3 h-3 text-primary fill-primary/30" />
+                            {wishListCount} 개 항목
+                          </span>
+                        </div>
+                      </td>
 
-                <div className="card-actions justify-end mt-6 pt-4 border-t border-base-300">
-                  <button
-                    onClick={() =>
-                      alert(`고객 [${customer.name}] 상세 정보 페이지 준비 중`)
-                    }
-                    className="btn btn-ghost btn-xs border border-base-300 text-base-content font-semibold hover:border-primary"
-                  >
-                    상세 보기
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+                      {/* Joined Date Column */}
+                      <td className="py-4 px-6 text-right font-medium text-base-content/70 whitespace-nowrap shrink-0">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-base-content/40 shrink-0" />
+                          <span>{formatDate(customer.createdAt)}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <EmptyState

@@ -1,14 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@clerk/react";
-import { fetchDashboardStats, fetchOrders } from "../services";
-import LoadingSpinner from "../components/LoadingSpinner";
-import EmptyState from "../components/EmptyState";
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@clerk/react';
+import { fetchDashboardStats, fetchOrders } from '../services';
+import LoadingSpinner from '../components/LoadingSpinner';
+import EmptyState from '../components/EmptyState';
 import {
   formatCurrency,
   formatDate,
   truncateId,
   getOrderStatusInfo,
-} from "../lib/util";
+} from '../lib/util';
 import {
   DollarSign,
   ShoppingBag,
@@ -18,7 +18,7 @@ import {
   PackageX,
   ArrowRight,
   Sparkles,
-} from "lucide-react";
+} from 'lucide-react';
 
 const DashboardPage = ({ setActiveTab }) => {
   const { getToken } = useAuth();
@@ -29,12 +29,12 @@ const DashboardPage = ({ setActiveTab }) => {
     isError: isStatsError,
     error: statsError,
   } = useQuery({
-    queryKey: ["adminStats"],
+    queryKey: ['adminStats'],
     queryFn: () => fetchDashboardStats(getToken),
   });
 
   const { data: recentOrders, isLoading: isOrdersLoading } = useQuery({
-    queryKey: ["adminOrders"],
+    queryKey: ['adminOrders'],
     queryFn: () => fetchOrders(getToken),
   });
 
@@ -55,32 +55,32 @@ const DashboardPage = ({ setActiveTab }) => {
 
   const statCards = [
     {
-      titleKo: "총 매출액",
-      titleEn: "Total Revenue",
+      titleKo: '총 매출액',
+      titleEn: 'Total Revenue',
       value: formatCurrency(stats?.totalRevenue || 0),
       icon: DollarSign,
-      badgeColor: "badge-success",
+      badgeColor: 'badge-success',
     },
     {
-      titleKo: "총 주문 건수",
-      titleEn: "Total Orders",
+      titleKo: '총 주문 건수',
+      titleEn: 'Total Orders',
       value: `${(stats?.totalOrders || 0).toLocaleString()}건`,
       icon: ShoppingBag,
-      badgeColor: "badge-primary",
+      badgeColor: 'badge-primary',
     },
     {
-      titleKo: "등록 상품 수",
-      titleEn: "Total Products",
+      titleKo: '등록 상품 수',
+      titleEn: 'Total Products',
       value: `${(stats?.totalProducts || 0).toLocaleString()}개`,
       icon: PackageCheck,
-      badgeColor: "badge-secondary",
+      badgeColor: 'badge-secondary',
     },
     {
-      titleKo: "총 고객수",
-      titleEn: "Total Customers",
+      titleKo: '총 고객수',
+      titleEn: 'Total Customers',
       value: `${(stats?.totalCustomers || 0).toLocaleString()}명`,
       icon: Users,
-      badgeColor: "badge-warning",
+      badgeColor: 'badge-warning',
     },
   ];
 
@@ -93,23 +93,28 @@ const DashboardPage = ({ setActiveTab }) => {
           return (
             <div
               key={idx}
-              className="card bg-base-100 border border-base-300 p-6 shadow-xl relative overflow-hidden transition-all duration-300 hover:border-primary/60 hover:shadow-2xl rounded-3xl"
+              className="card bg-base-100 border border-base-300 p-6 shadow-xl relative overflow-hidden transition-all duration-300 hover:border-primary/60 hover:shadow-2xl rounded-3xl h-full flex flex-col justify-between"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-bold text-base-content/80 leading-snug">
-                    <div>{card.titleKo}</div>
-                    <div className="text-xs font-medium text-base-content/60 mt-0.5">
-                      ({card.titleEn})
-                    </div>
+              {/* Header Row: Title & Icon aligned at identical top position */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-base-content/80 leading-tight truncate">
+                    {card.titleKo}
                   </div>
-                  <h3 className="text-2xl sm:text-3xl font-black text-base-content mt-3 tracking-tight">
-                    {card.value}
-                  </h3>
+                  <div className="text-xs font-medium text-base-content/60 mt-1 truncate">
+                    ({card.titleEn})
+                  </div>
                 </div>
                 <div className="p-3.5 rounded-2xl shadow-lg shrink-0 bg-primary text-primary-content">
                   <Icon className="w-6 h-6" />
                 </div>
+              </div>
+
+              {/* Value Row: Main statistic aligned at identical bottom height */}
+              <div className="mt-6">
+                <h3 className="text-2xl sm:text-3xl font-black text-base-content tracking-tight leading-none truncate">
+                  {card.value}
+                </h3>
               </div>
             </div>
           );
@@ -135,7 +140,7 @@ const DashboardPage = ({ setActiveTab }) => {
               </div>
               {recentOrders && recentOrders.length > 0 && (
                 <button
-                  onClick={() => setActiveTab("orders")}
+                  onClick={() => setActiveTab('orders')}
                   className="btn btn-primary btn-outline btn-sm font-bold gap-1 rounded-xl"
                 >
                   <span>전체 보기</span>
@@ -160,7 +165,7 @@ const DashboardPage = ({ setActiveTab }) => {
                   <tbody className="divide-y divide-base-300">
                     {recentOrders.slice(0, 5).map((order) => {
                       const { badgeClass, label } = getOrderStatusInfo(
-                        order.status
+                        order.status,
                       );
                       return (
                         <tr
@@ -171,7 +176,7 @@ const DashboardPage = ({ setActiveTab }) => {
                             {truncateId(order._id)}
                           </td>
                           <td className="font-semibold text-base-content">
-                            <div>{order.userId?.name || "고객 회원"}</div>
+                            <div>{order.userId?.name || '고객 회원'}</div>
                             {order.userId?.email && (
                               <div className="text-[11px] text-base-content/50 font-normal truncate max-w-30">
                                 {order.userId.email}
@@ -186,7 +191,7 @@ const DashboardPage = ({ setActiveTab }) => {
                                     key={idx}
                                     className="truncate font-medium"
                                   >
-                                    • {item.productId?.name || "상품"}{" "}
+                                    • {item.productId?.name || '상품'}{' '}
                                     <span className="text-primary font-bold">
                                       x{item.quantity}
                                     </span>
@@ -222,7 +227,7 @@ const DashboardPage = ({ setActiveTab }) => {
                 title="최근 주문 내역이 없습니다"
                 description="아직 들어온 최신 주문 정보가 없습니다."
                 actionLabel="주문 관리 페이지로 이동"
-                onAction={() => setActiveTab("orders")}
+                onAction={() => setActiveTab('orders')}
               />
             )}
           </div>
@@ -243,7 +248,7 @@ const DashboardPage = ({ setActiveTab }) => {
 
             <div className="space-y-3.5">
               <button
-                onClick={() => setActiveTab("products")}
+                onClick={() => setActiveTab('products')}
                 className="w-full p-4 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-2xl text-left flex items-center justify-between group transition-all cursor-pointer shadow-sm"
               >
                 <div>
@@ -258,7 +263,7 @@ const DashboardPage = ({ setActiveTab }) => {
               </button>
 
               <button
-                onClick={() => setActiveTab("orders")}
+                onClick={() => setActiveTab('orders')}
                 className="w-full p-4 bg-secondary/10 hover:bg-secondary/20 border border-secondary/30 rounded-2xl text-left flex items-center justify-between group transition-all cursor-pointer shadow-sm"
               >
                 <div>
@@ -273,7 +278,7 @@ const DashboardPage = ({ setActiveTab }) => {
               </button>
 
               <button
-                onClick={() => setActiveTab("customers")}
+                onClick={() => setActiveTab('customers')}
                 className="w-full p-4 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-2xl text-left flex items-center justify-between group transition-all cursor-pointer shadow-sm"
               >
                 <div>

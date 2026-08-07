@@ -1,35 +1,49 @@
-import { useState, useMemo, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@clerk/react";
-import { fetchOrders, updateOrderStatus } from "../services";
-import LoadingSpinner from "../components/LoadingSpinner";
-import EmptyState from "../components/EmptyState";
+import { useState, useMemo, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@clerk/react';
+import { fetchOrders, updateOrderStatus } from '../services';
+import LoadingSpinner from '../components/LoadingSpinner';
+import EmptyState from '../components/EmptyState';
 import {
   formatCurrency,
   truncateId,
   getOrderStatusInfo,
-} from "../lib/util";
-import { Truck, CheckCircle2, Clock, Filter, AlertCircle, ShoppingCart } from "lucide-react";
+  formatDate,
+} from '../lib/util';
+import {
+  Truck,
+  CheckCircle2,
+  Clock,
+  Filter,
+  AlertCircle,
+  ShoppingCart,
+} from 'lucide-react';
 
 const OrdersPage = () => {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState('ALL');
 
-  const { data: orders, isLoading, isError, error } = useQuery({
-    queryKey: ["adminOrders"],
+  const {
+    data: orders,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ['adminOrders'],
     queryFn: () => fetchOrders(getToken),
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: ({ orderId, status }) => updateOrderStatus({ orderId, status, getToken }),
+    mutationFn: ({ orderId, status }) =>
+      updateOrderStatus({ orderId, status, getToken }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["adminOrders"] });
-      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
-      alert("주문 상태가 변경되었습니다.");
+      queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['adminStats'] });
+      alert('주문 상태가 변경되었습니다.');
     },
     onError: (err) => {
-      alert(`주문 상태 변경 실패: ${err.message}`);
+      alert(`주문 상태 변경 실패: ${err?.message || '오류가 발생했습니다.'}`);
     },
   });
 
@@ -44,12 +58,13 @@ const OrdersPage = () => {
 
   const filteredOrders = useMemo(() => {
     return (orders || []).filter((order) => {
-      if (statusFilter === "ALL") return true;
+      if (statusFilter === 'ALL') return true;
       return order.status === statusFilter;
     });
   }, [orders, statusFilter]);
 
-  if (isLoading) return <LoadingSpinner message="주문 내역 목록을 조회하는 중입니다..." />;
+  if (isLoading)
+    return <LoadingSpinner message="주문 내역 목록을 조회하는 중입니다..." />;
 
   if (isError) {
     return (
@@ -70,12 +85,14 @@ const OrdersPage = () => {
             Filter Status:
           </span>
           <div className="join ml-2">
-            {["ALL", "pending", "shipped", "delivered"].map((st) => (
+            {['ALL', 'pending', 'shipped', 'delivered'].map((st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
                 className={`btn btn-xs join-item uppercase font-bold ${
-                  statusFilter === st ? "btn-primary" : "btn-ghost text-base-content/60"
+                  statusFilter === st
+                    ? 'btn-primary'
+                    : 'btn-ghost text-base-content/60'
                 }`}
               >
                 {st}
@@ -104,7 +121,8 @@ const OrdersPage = () => {
                   <th className="py-4 px-6">Customer</th>
                   <th className="py-4 px-6">Items</th>
                   <th className="py-4 px-6">Total Price</th>
-                  <th className="py-4 px-6">Current Status</th>
+                  <th className="py-4 px-6">Status</th>
+                  <th className="py-4 px-6">Date</th>
                   <th className="py-4 px-6 text-right">Update Status</th>
                 </tr>
               </thead>
@@ -112,24 +130,36 @@ const OrdersPage = () => {
                 {filteredOrders.map((order) => {
                   const { badgeClass } = getOrderStatusInfo(order.status);
                   return (
-                    <tr key={order._id} className="hover:bg-base-200/60 transition-colors">
+                    <tr
+                      key={order._id}
+                      className="hover:bg-base-200/60 transition-colors"
+                    >
                       <td className="py-4 px-6 font-mono text-base-content/70 font-semibold">
                         {truncateId(order._id)}
                       </td>
                       <td className="py-4 px-6">
-                        <div className="font-bold text-base-content text-sm">{order.userId?.name || "고객"}</div>
-                        <div className="text-base-content/60 text-[11px]">{order.userId?.email || "-"}</div>
+                        <div className="font-bold text-base-content text-sm">
+                          {order.userId?.name || '고객'}
+                        </div>
+                        <div className="text-base-content/60 text-[11px]">
+                          {order.shippingAddress?.city
+                            ? `${order.shippingAddress.city}, ${order.shippingAddress.state}`
+                            : order.userId?.email || '-'}
+                        </div>
                       </td>
                       <td className="py-4 px-6">
                         <div className="text-base-content/80 font-medium max-w-xs">
                           {order.orderItems?.length > 0 ? (
                             order.orderItems.map((item, idx) => (
                               <div key={idx} className="truncate">
-                                • {item.productId?.name || "상품"} x {item.quantity}
+                                • {item.productId?.name || '상품'} x{' '}
+                                {item.quantity}
                               </div>
                             ))
                           ) : (
-                            <span className="text-base-content/40">상품 정보 없음</span>
+                            <span className="text-base-content/40">
+                              상품 정보 없음
+                            </span>
                           )}
                         </div>
                       </td>
@@ -140,22 +170,27 @@ const OrdersPage = () => {
                         <span
                           className={`badge badge-sm font-semibold uppercase gap-1 ${badgeClass}`}
                         >
-                          {order.status === "delivered" ? (
+                          {order.status === 'delivered' ? (
                             <CheckCircle2 className="w-3.5 h-3.5" />
-                          ) : order.status === "shipped" ? (
+                          ) : order.status === 'shipped' ? (
                             <Truck className="w-3.5 h-3.5" />
                           ) : (
                             <Clock className="w-3.5 h-3.5" />
                           )}
-                          {order.status || "pending"}
+                          {order.status || 'pending'}
                         </span>
+                      </td>
+                      <td className="py-4 px-6 font-medium text-base-content/70 whitespace-nowrap">
+                        {formatDate(order.createdAt)}
                       </td>
                       <td className="py-4 px-6 text-right">
                         <select
-                          value={order.status || "pending"}
-                          onChange={(e) => handleStatusChange(order._id, e.target.value)}
+                          value={order.status || 'pending'}
+                          onChange={(e) =>
+                            handleStatusChange(order._id, e.target.value)
+                          }
                           disabled={updateStatusMutation.isPending}
-                          className="select select-bordered select-xs bg-base-200 text-base-content font-bold"
+                          className="select select-bordered select-xs bg-base-200 text-base-content font-bold cursor-pointer"
                         >
                           <option value="pending">pending (대기)</option>
                           <option value="shipped">shipped (배송중)</option>

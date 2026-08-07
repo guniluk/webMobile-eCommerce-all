@@ -229,7 +229,7 @@ export const updateOrderStatus = async (req, res) => {
 export const getAllCustomers = async (_, res) => {
   try {
     const customers = await User.find()
-      .select("name email imageUrl")
+      .select("name email imageUrl addresses wishList createdAt")
       .sort({ createdAt: -1 });
     return res.status(200).json({ customers });
   } catch (error) {

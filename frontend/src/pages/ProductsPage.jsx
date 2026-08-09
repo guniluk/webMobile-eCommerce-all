@@ -173,6 +173,24 @@ const ProductsPage = () => {
         </button>
       </div>
 
+      {/* Subheader: Total Product Count */}
+      <div className="flex flex-row items-center justify-between px-2 pt-1 pb-0.5">
+        <span className="text-sm font-bold text-base-content">
+          상품 목록 🛍️
+        </span>
+
+        <div className="flex items-center gap-2">
+          <span className="badge badge-primary badge-sm font-extrabold px-2.5 py-2 shadow-sm text-xs">
+            전체 {(products?.length || 0).toLocaleString()}개
+          </span>
+          {(searchTerm.trim() || selectedCategory !== "ALL") && (
+            <span className="text-xs text-base-content/60 font-medium">
+              (조회 결과: {filteredProducts.length.toLocaleString()}개)
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Product Table or Empty State */}
       {filteredProducts.length > 0 ? (
         <div className="bg-base-100 border border-base-300 rounded-2xl overflow-hidden shadow-xl">

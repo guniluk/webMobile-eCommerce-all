@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
 import { fetchCustomers } from "../services";
 import LoadingSpinner from "../components/LoadingSpinner";
 import EmptyState from "../components/EmptyState";
+import WishlistModal from "../components/WishlistModal";
 import { formatDate } from "../lib/util";
 import {
   Search,
@@ -20,6 +21,10 @@ const CustomersPage = () => {
   const { getToken } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
 
+  // 💖 위시리스트 상세보기 모달 상태
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [isWishlistModalOpen, setIsWishlistModalOpen] = useState(false);
+
   const {
     data: customers,
     isLoading,
@@ -31,16 +36,26 @@ const CustomersPage = () => {
   });
 
   const filteredCustomers = useMemo(() => {
-    return (customers || []).filter((cust) => {
-      const nameMatch = cust.name
+    return (customers || []).filter((customerItem) => {
+      const nameMatch = customerItem.name
         ?.toLowerCase()
         .includes(searchTerm.toLowerCase());
-      const emailMatch = cust.email
+      const emailMatch = customerItem.email
         ?.toLowerCase()
         .includes(searchTerm.toLowerCase());
       return nameMatch || emailMatch;
     });
   }, [customers, searchTerm]);
+
+  const handleOpenWishlistModal = useCallback((customer) => {
+    setSelectedCustomer(customer);
+    setIsWishlistModalOpen(true);
+  }, []);
+
+  const handleCloseWishlistModal = useCallback(() => {
+    setIsWishlistModalOpen(false);
+    setSelectedCustomer(null);
+  }, []);
 
   // 주소 포맷팅 헬퍼 함수
   const formatAddress = (addresses) => {
@@ -96,7 +111,7 @@ const CustomersPage = () => {
       {filteredCustomers.length > 0 ? (
         <div className="bg-base-100 border border-base-300 rounded-2xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto w-full">
-            <table className="table table-sm text-xs text-base-content min-w-[650px] w-full">
+            <table className="table table-sm text-xs text-base-content min-w-162.5 w-full">
               <thead className="text-[11px] uppercase bg-base-200 text-base-content/80 border-b border-base-300">
                 <tr>
                   <th className="py-4 px-6 w-1/4">Customer</th>
@@ -117,7 +132,7 @@ const CustomersPage = () => {
                       className="hover:bg-base-200/60 transition-colors"
                     >
                       {/* Customer Column */}
-                      <td className="py-4 px-6 max-w-[200px]">
+                      <td className="py-4 px-6 max-w-50">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="avatar shrink-0">
                             {customer.imageUrl ? (
@@ -150,7 +165,7 @@ const CustomersPage = () => {
                       </td>
 
                       {/* Email Column */}
-                      <td className="py-4 px-6 max-w-[220px]">
+                      <td className="py-4 px-6 max-w-55">
                         <div
                           className="flex items-center gap-2 text-base-content/80 font-medium min-w-0"
                           title={customer.email || "-"}
@@ -161,7 +176,7 @@ const CustomersPage = () => {
                       </td>
 
                       {/* Address Column */}
-                      <td className="py-4 px-6 max-w-[260px]">
+                      <td className="py-4 px-6 max-w-65">
                         {addressStr ? (
                           <div
                             className="flex items-start gap-1.5 text-base-content/80 min-w-0"
@@ -175,14 +190,18 @@ const CustomersPage = () => {
                         )}
                       </td>
 
-                      {/* Wish List Column (Theme 메인 primary 색상 연동) */}
+                      {/* Wish List Column (클릭 시 모달 오픈) */}
                       <td className="py-4 px-6 whitespace-nowrap shrink-0">
-                        <div className="flex items-center gap-1">
-                          <span className="badge badge-primary/15 text-primary border border-primary/30 badge-sm font-semibold gap-1 px-2.5 py-3">
-                            <Heart className="w-3 h-3 text-primary fill-primary/30" />
+                        <button
+                          onClick={() => handleOpenWishlistModal(customer)}
+                          className="flex items-center gap-1 group cursor-pointer border-none bg-transparent p-0"
+                          title={`${customer.name || "고객"} 님의 위시리스트 상세보기`}
+                        >
+                          <span className="badge badge-primary/15 text-primary border border-primary/30 group-hover:bg-primary/25 group-hover:border-primary/50 badge-sm font-semibold gap-1 px-2.5 py-3 transition-all active:scale-95 shadow-sm">
+                            <Heart className="w-3 h-3 text-primary fill-primary/30 group-hover:fill-primary/60 transition-all" />
                             {wishListCount} 개 항목
                           </span>
-                        </div>
+                        </button>
                       </td>
 
                       {/* Joined Date Column */}
@@ -206,6 +225,13 @@ const CustomersPage = () => {
           description="현재 데이터베이스에 등록된 고객 회원이 없거나 검색 조건에 맞는 결과가 없습니다."
         />
       )}
+
+      {/* 💖 위시리스트 모달 */}
+      <WishlistModal
+        isOpen={isWishlistModalOpen}
+        onClose={handleCloseWishlistModal}
+        customer={selectedCustomer}
+      />
     </div>
   );
 };

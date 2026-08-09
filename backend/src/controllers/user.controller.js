@@ -12,7 +12,6 @@ export const syncUser = async (req, res) => {
     const authUserId = auth?.userId;
 
     const { clerkId, email, name, imageUrl } = req.body || {};
-    // 보안: 로그인 인증 토큰(authUserId)이 존재하는 경우 최우선으로 사용하여 ID 변조 방지
     const targetClerkId = authUserId || clerkId;
 
     if (!targetClerkId) {
@@ -23,16 +22,50 @@ export const syncUser = async (req, res) => {
       });
     }
 
+    // 기존 유저 정보 조회
+    const existingUser = await User.findOne({ clerkId: targetClerkId });
+
+    // 전달된 유저 정보가 존재하면 사용하고, 없으면 기존 정보 또는 백업 기본값 사용
+    const finalEmail =
+      email && email.trim() !== ""
+        ? email
+        : existingUser && existingUser.email && !existingUser.email.includes("@clerk.user")
+        ? existingUser.email
+        : `${targetClerkId}@clerk.user`;
+
+    const finalName =
+      name && name.trim() !== ""
+        ? name
+        : existingUser && existingUser.name && existingUser.name !== "User"
+        ? existingUser.name
+        : "User";
+
+    const finalImageUrl =
+      imageUrl || (existingUser ? existingUser.imageUrl : "");
+
+    // 🟢 최적화: 기존 데이터와 동일할 경우 불필요한 DB 업데이트 및 반복 콘솔 출력 스킵
+    if (
+      existingUser &&
+      existingUser.email === finalEmail &&
+      existingUser.name === finalName &&
+      existingUser.imageUrl === finalImageUrl
+    ) {
+      return res.status(200).json({
+        success: true,
+        message: "사용자 정보 최신 상태 유지됨",
+        user: existingUser,
+      });
+    }
+
     const userData = {
       clerkId: targetClerkId,
-      email:
-        email && email.trim() !== "" ? email : `${targetClerkId}@clerk.user`,
-      name: name && name.trim() !== "" ? name : "User",
-      imageUrl: imageUrl || "",
+      email: finalEmail,
+      name: finalName,
+      imageUrl: finalImageUrl,
     };
 
     console.log(
-      `[syncUser 요청 수신] clerkId: ${targetClerkId}, email: ${userData.email}`,
+      `[syncUser 요청 수신] clerkId: ${targetClerkId}, email: ${userData.email}, name: ${userData.name}`,
     );
 
     // DB에 존재하면 업데이트, 없으면 생성 (Upsert)
@@ -161,12 +194,11 @@ export const addAddress = async (req, res) => {
       !city ||
       !state ||
       !zipCode ||
-      !phoneNumber ||
-      !isDefault
+      !phoneNumber
     ) {
       return res.status(400).json({
         success: false,
-        message: "배송지 정보가 제공되지 않았습니다.",
+        message: "필수 배송지 정보가 모두 입력되지 않았습니다.",
       });
     }
 
@@ -315,9 +347,11 @@ export const addWishlist = async (req, res) => {
     }
     user.wishList.push(productId);
     await user.save();
+    await user.populate("wishList");
+    const validWishList = (user.wishList || []).filter(Boolean);
     return res.status(200).json({
       message: "상품이 성공적으로 위시리스트에 추가되었습니다.",
-      wishList: user.wishList,
+      wishList: validWishList,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -332,7 +366,8 @@ export const getWishlists = async (req, res) => {
         message: "사용자를 찾을 수 없습니다.",
       });
     }
-    return res.status(200).json({ wishList: user.wishList });
+    const validWishList = (user.wishList || []).filter(Boolean);
+    return res.status(200).json({ wishList: validWishList });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -343,7 +378,8 @@ export const deleteWishlist = async (req, res) => {
     const user = req.user;
     const { productId } = req.params;
     const productIndex = user.wishList.findIndex(
-      (product) => product._id.toString() === productId,
+      (product) =>
+        product && (product._id ? product._id.toString() : product.toString()) === productId,
     );
     if (productIndex === -1) {
       return res.status(404).json({
@@ -352,9 +388,11 @@ export const deleteWishlist = async (req, res) => {
     }
     user.wishList.splice(productIndex, 1);
     await user.save();
+    await user.populate("wishList");
+    const validWishList = (user.wishList || []).filter(Boolean);
     return res.status(200).json({
       message: "상품이 성공적으로 위시리스트에서 삭제되었습니다.",
-      wishList: user.wishList,
+      wishList: validWishList,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

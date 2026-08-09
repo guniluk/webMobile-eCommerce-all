@@ -8,13 +8,9 @@ export const getCart = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    let cart = await Cart.findOne({ userId }).populate("items.productId");
+    const cart = await Cart.findOne({ userId }).populate("items.productId");
     if (!cart) {
-      cart = await Cart.create({
-        userId,
-        clerkId: req.user.clerkId,
-        items: [],
-      });
+      return res.status(200).json({ cart: { items: [] } });
     }
 
     return res.status(200).json({ cart });
@@ -109,9 +105,26 @@ export const updateCartItem = async (req, res) => {
     }
 
     if (newQuantity <= 0) {
-      return res.status(400).json({
-        message: "수량은 1 이상으로 입력해주세요.",
-      });
+      const cart = await Cart.findOne({ userId });
+      if (cart) {
+        cart.items = cart.items.filter(
+          (item) => item.productId.toString() !== productId.toString(),
+        );
+        if (cart.items.length === 0) {
+          await Cart.findOneAndDelete({ userId });
+          return res.status(200).json({
+            message: "장바구니가 비워졌습니다.",
+            cart: { items: [] },
+          });
+        }
+        await cart.save();
+        await cart.populate("items.productId");
+        return res.status(200).json({
+          message: "장바구니에서 상품이 삭제되었습니다.",
+          cart,
+        });
+      }
+      return res.status(200).json({ cart: { items: [] } });
     }
 
     const cart = await Cart.findOne({ userId });
@@ -183,6 +196,15 @@ export const deleteCartItem = async (req, res) => {
       });
     }
 
+    // 아이템이 없으면 DB에서 Cart 문서 자체를 완전 삭제
+    if (cart.items.length === 0) {
+      await Cart.findOneAndDelete({ userId });
+      return res.status(200).json({
+        message: "장바구니가 비워졌습니다.",
+        cart: { items: [] },
+      });
+    }
+
     await cart.save();
     await cart.populate("items.productId");
 
@@ -200,19 +222,12 @@ export const clearCart = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    const cart = await Cart.findOne({ userId });
-    if (!cart) {
-      return res.status(404).json({
-        message: "장바구니를 찾을 수 없습니다.",
-      });
-    }
-
-    cart.items = [];
-    await cart.save();
+    // 아이템이 없는 경우 DB에서 Cart 문서 자체를 완전 삭제
+    await Cart.findOneAndDelete({ userId });
 
     return res.status(200).json({
       message: "장바구니가 비워졌습니다.",
-      cart,
+      cart: { items: [] },
     });
   } catch (error) {
     console.error("장바구니 비우기 실패:", error);

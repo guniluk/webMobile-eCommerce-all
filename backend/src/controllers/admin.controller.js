@@ -107,9 +107,24 @@ export const createProduct = async (req, res) => {
   }
 };
 
-export const getAllProducts = async (_, res) => {
+export const getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find().sort({ createdAt: -1 });
+    const { category, search } = req.query;
+    const query = {};
+
+    if (category && category.trim() !== "" && category.toLowerCase() !== "all") {
+      query.category = { $regex: new RegExp(`^${category.trim()}$`, "i") };
+    }
+
+    if (search && search.trim().length >= 2) {
+      const searchRegex = new RegExp(search.trim(), "i");
+      query.$or = [
+        { name: searchRegex },
+        { category: searchRegex },
+      ];
+    }
+
+    const products = await Product.find(query).sort({ createdAt: -1 });
     return res.status(200).json(products);
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -230,6 +245,7 @@ export const getAllCustomers = async (_, res) => {
   try {
     const customers = await User.find()
       .select("name email imageUrl addresses wishList createdAt")
+      .populate("wishList")
       .sort({ createdAt: -1 });
     return res.status(200).json({ customers });
   } catch (error) {

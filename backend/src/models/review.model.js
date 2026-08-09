@@ -23,8 +23,14 @@ const reviewSchema = new mongoose.Schema(
       min: 1,
       max: 5,
     },
+    comment: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true },
 );
+
+reviewSchema.index({ userId: 1, orderId: 1, productId: 1 }, { unique: true });
 
 export const Review = mongoose.models.Review || mongoose.model("Review", reviewSchema);

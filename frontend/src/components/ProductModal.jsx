@@ -242,21 +242,21 @@ const ProductModal = memo(({ isOpen, onClose, onSubmit, initialData, isSubmittin
                 <button
                   type="button"
                   onClick={() => setUploadTab("file")}
-                  className={`btn btn-xs join-item ${
+                  className={`btn btn-sm join-item gap-2 px-3 py-1.5 ${
                     uploadTab === "file" ? "btn-primary" : "btn-ghost text-slate-400"
                   }`}
                 >
-                  <Upload className="w-3 h-3" />
+                  <Upload className="w-3.5 h-3.5" />
                   <span>PC 파일 선택</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setUploadTab("url")}
-                  className={`btn btn-xs join-item ${
+                  className={`btn btn-sm join-item gap-2 px-3 py-1.5 ${
                     uploadTab === "url" ? "btn-primary" : "btn-ghost text-slate-400"
                   }`}
                 >
-                  <Link className="w-3 h-3" />
+                  <Link className="w-3.5 h-3.5" />
                   <span>URL 입력</span>
                 </button>
               </div>

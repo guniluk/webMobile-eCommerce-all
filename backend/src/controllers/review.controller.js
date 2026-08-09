@@ -37,7 +37,8 @@ const updateProductRating = async (productId) => {
 export const createReview = async (req, res) => {
   try {
     const user = req.user;
-    const { productId, rating, orderId } = req.body;
+    const { productId, rating, orderId, comment, message } = req.body;
+    const finalComment = comment || message || "";
 
     // 1. 필수 입력값 검증
     if (!productId || rating === undefined || rating === null || !orderId) {
@@ -55,12 +56,12 @@ export const createReview = async (req, res) => {
       });
     }
 
-    // 2. 주문 존재 및 배송 완료 여부 확인
+    // 2. 주문 존재 여부 확인
     const order = await Order.findById(orderId);
-    if (!order || order.status !== "delivered") {
-      return res.status(400).json({
+    if (!order) {
+      return res.status(404).json({
         success: false,
-        message: "배송이 완료된 주문 건에 대해서만 리뷰를 작성할 수 있습니다.",
+        message: "주문 건을 찾을 수 없습니다.",
       });
     }
 
@@ -84,42 +85,35 @@ export const createReview = async (req, res) => {
       });
     }
 
-    // 5. 주문 내 상품 포함 여부 검증
-    const productInOrder = order.orderItems.find(
-      (item) => item.productId.toString() === productId.toString(),
-    );
-    if (!productInOrder) {
-      return res.status(400).json({
-        success: false,
-        message: "해당 주문 항목에 존재하지 않는 상품입니다.",
-      });
-    }
-
-    // 6. 이미 작성된 리뷰 존재 여부 확인
+    // 5. 이미 작성된 리뷰 존재 여부 확인 (중복 작성 방지)
     const existingReview = await Review.findOne({
       userId: user._id,
+      orderId,
       productId,
     });
     if (existingReview) {
       return res.status(400).json({
         success: false,
-        message: "해당 주문 상품에 대해 이미 작성된 리뷰가 존재합니다.",
+        alreadyReviewed: true,
+        message: "이미 해당 주문 상품에 대한 리뷰를 작성하셨습니다.",
       });
     }
 
-    // 7. 리뷰 생성
+    // 6. 리뷰 생성
     const review = await Review.create({
       userId: user._id,
       productId,
       orderId,
       rating: numericRating,
+      comment: finalComment,
     });
 
-    // 8. 상품 평점 및 리뷰 개수 갱신
+    // 7. 상품 평점 및 리뷰 개수 갱신
     await updateProductRating(productId);
 
     return res.status(201).json({
-      message: "리뷰가 성공적으로 등록되었습니다.",
+      success: true,
+      message: "소중한 리뷰가 성공적으로 등록되었습니다.",
       review,
     });
   } catch (error) {
@@ -161,6 +155,23 @@ export const deleteReview = async (req, res) => {
     });
   } catch (error) {
     console.error("리뷰 삭제 실패:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * 특정 상품의 리뷰 목록 조회 API
+ */
+export const getProductReviews = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const reviews = await Review.find({ productId })
+      .populate("userId", "name email imageUrl")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ success: true, reviews });
+  } catch (error) {
+    console.error("상품 리뷰 조회 실패:", error);
     return res.status(500).json({ message: error.message });
   }
 };

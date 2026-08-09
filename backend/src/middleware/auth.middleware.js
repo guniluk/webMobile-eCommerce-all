@@ -11,18 +11,25 @@ export const protectRoute = async (req, res, next) => {
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized: 로그인 필요" });
     }
+
     let user = await User.findOne({ clerkId: userId });
 
-    // 만약 데이터베이스에 유저 정보가 아직 동기화되지 않은 경우에도 임시 유저 처리
+    // DB에 유저 정보가 아직 생성되지 않은 신규 가입자도 401 오류 없이 자동 동기화 생성
     if (!user) {
-      user = await User.create({
-        clerkId: userId,
-        email: "user@example.com",
-        name: "Admin User",
-      }).catch(() => null);
+      user = await User.findOneAndUpdate(
+        { clerkId: userId },
+        {
+          $setOnInsert: {
+            clerkId: userId,
+            email: `${userId}@clerk.user`,
+            name: "User",
+          },
+        },
+        { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
+      ).catch(() => null);
     }
 
-    req.user = user || { clerkId: userId, email: "admin@example.com" };
+    req.user = user;
     next();
   } catch (error) {
     return res.status(500).json({ error: error.message });

@@ -1,5 +1,5 @@
 import '../global.css';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -10,6 +10,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as WebBrowser from 'expo-web-browser';
 import { tokenCache } from '../lib/cache';
 import * as Sentry from '@sentry/react-native';
+import { NotificationModal } from '../components/NotificationModal';
+import { useNotificationStore } from '../store/useNotificationStore';
+import { useOrdersQuery } from '../hooks/useOrdersQuery';
 
 // 🛡️ Sentry 에러 조용한 전송 설정 (콘솔 메세지 비표시, 오직 실제 Error 발생 시에만 백그라운드 전송)
 Sentry.init({
@@ -36,29 +39,30 @@ WebBrowser.maybeCompleteAuthSession();
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || '';
 
-function InitialLayout() {
+function AuthGuard() {
   const { isLoaded, isSignedIn } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const [hasInitialized, setHasInitialized] = useState(false);
-
-  const inAuthGroup = segments[0] === '(auth)';
 
   useEffect(() => {
     if (!isLoaded) return;
 
-    if (!hasInitialized) {
-      setHasInitialized(true);
-    }
+    const inAuthGroup = segments[0] === '(auth)';
 
     if (isSignedIn && inAuthGroup) {
       router.replace('/(tabs)');
     } else if (!isSignedIn && !inAuthGroup) {
       router.replace('/(auth)/login');
     }
-  }, [isLoaded, isSignedIn, inAuthGroup, router, hasInitialized]);
+  }, [isLoaded, isSignedIn, segments, router]);
 
-  if (!isLoaded && !hasInitialized) {
+  return null;
+}
+
+function InitialLayout() {
+  const { isLoaded } = useAuth();
+
+  if (!isLoaded) {
     return (
       <View className="flex-1 justify-center items-center dark:bg-slate-900 bg-slate-100">
         <ActivityIndicator size="large" color="#06b6d4" />
@@ -67,10 +71,13 @@ function InitialLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-    </Stack>
+    <>
+      <AuthGuard />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
+    </>
   );
 }
 

@@ -6,12 +6,14 @@ import { Address } from '../../types';
 interface AddressListTabProps {
   addresses: Address[];
   onOpenAddModal: () => void;
+  onEditAddress: (address: Address) => void;
   onDeleteAddress: (addressId: string) => void;
 }
 
 export const AddressListTab: React.FC<AddressListTabProps> = React.memo(function AddressListTab({
   addresses,
   onOpenAddModal,
+  onEditAddress,
   onDeleteAddress,
 }) {
   return (
@@ -38,7 +40,7 @@ export const AddressListTab: React.FC<AddressListTabProps> = React.memo(function
             key={addr._id || addr.streetAddress}
             className="dark:bg-slate-800 bg-white rounded-2xl p-4 mb-3 border dark:border-slate-700 border-slate-200 shadow-sm flex-row items-center justify-between"
           >
-            <View className="flex-1 mr-3">
+            <View className="flex-1 mr-2">
               <View className="flex-row items-center mb-1">
                 <Text className="text-sm font-bold dark:text-white text-slate-900 mr-2">
                   [{addr.label}] {addr.fullName}
@@ -59,17 +61,29 @@ export const AddressListTab: React.FC<AddressListTabProps> = React.memo(function
               </Text>
             </View>
 
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => {
-                if (addr._id) {
-                  onDeleteAddress(addr._id);
-                }
-              }}
-              className="p-2 rounded-xl bg-rose-500/10 dark:bg-rose-500/20"
-            >
-              <Ionicons name="trash-outline" size={18} color="#f43f5e" />
-            </TouchableOpacity>
+            <View className="flex-row items-center" style={{ gap: 6 }}>
+              {/* 배송지 수정 버튼 */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => onEditAddress(addr)}
+                className="p-2 rounded-xl bg-sky-500/10 dark:bg-cyan-500/20 border border-sky-500/20 dark:border-cyan-500/30"
+              >
+                <Ionicons name="pencil-outline" size={17} color="#0284c7" />
+              </TouchableOpacity>
+
+              {/* 배송지 삭제 버튼 */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => {
+                  if (addr._id) {
+                    onDeleteAddress(addr._id);
+                  }
+                }}
+                className="p-2 rounded-xl bg-rose-500/10 dark:bg-rose-500/20"
+              >
+                <Ionicons name="trash-outline" size={17} color="#f43f5e" />
+              </TouchableOpacity>
+            </View>
           </View>
         ))
       )}

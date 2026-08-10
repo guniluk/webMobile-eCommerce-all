@@ -7,11 +7,9 @@ import { getProductImageSource } from '../../lib/productUtils';
 interface ProductCardProps {
   product: Product;
   isWished: boolean;
-  isAdding: boolean;
   failedImages: Record<string, boolean>;
   onSelectProduct: (product: Product) => void;
   onToggleWishlist: (productId: string) => void;
-  onAddToCart: (product: Product) => void;
   onOpenReviews: (product: Product) => void;
   onImageError: (productId: string) => void;
 }
@@ -19,11 +17,9 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = React.memo(function ProductCard({
   product,
   isWished,
-  isAdding,
   failedImages,
   onSelectProduct,
   onToggleWishlist,
-  onAddToCart,
   onOpenReviews,
   onImageError,
 }) {
@@ -83,22 +79,6 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(function Produ
           <Text className="text-sm font-extrabold dark:text-cyan-400 text-sky-700">
             ₩{(product.price || 0).toLocaleString()}
           </Text>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={(e) => {
-              e.stopPropagation();
-              onAddToCart(product);
-            }}
-            disabled={isAdding}
-            className="w-8 h-8 rounded-xl bg-sky-600 dark:bg-cyan-500 items-center justify-center shadow-sm"
-          >
-            {isAdding ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Ionicons name="cart" size={16} color="white" />
-            )}
-          </TouchableOpacity>
         </View>
 
         {/* 💬 리뷰 보기 버튼 */}

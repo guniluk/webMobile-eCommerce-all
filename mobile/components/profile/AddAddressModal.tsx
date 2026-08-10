@@ -1,10 +1,23 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView, Modal, Switch } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  ScrollView,
+  Modal,
+  Switch,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface AddAddressModalProps {
   visible: boolean;
   isDark: boolean;
+  isEditing?: boolean;
   newLabel: string;
   newFullName: string;
   newStreetAddress: string;
@@ -28,6 +41,7 @@ interface AddAddressModalProps {
 export const AddAddressModal: React.FC<AddAddressModalProps> = ({
   visible,
   isDark,
+  isEditing = false,
   newLabel,
   newFullName,
   newStreetAddress,
@@ -54,14 +68,22 @@ export const AddAddressModal: React.FC<AddAddressModalProps> = ({
       transparent
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-black/60 justify-end">
-        <View className="dark:bg-slate-800 bg-white rounded-t-3xl p-6 max-h-[90%] border-t dark:border-slate-700 border-slate-200">
-          <ScrollView showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View className="flex-1 bg-black/60 justify-end">
+            <View className="dark:bg-slate-800 bg-white rounded-t-3xl p-6 max-h-[90%] border-t dark:border-slate-700 border-slate-200">
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
             <View className="flex-row justify-between items-center mb-5 pb-3 border-b dark:border-slate-700 border-slate-100">
               <View className="flex-row items-center">
                 <Ionicons name="location" size={22} color={isDark ? '#38bdf8' : '#0284c7'} />
                 <Text className="text-base font-bold dark:text-white text-slate-900 ml-2">
-                  새 배송지 등록 📍
+                  {isEditing ? '배송지 정보 수정 ✏️' : '새 배송지 등록 📍'}
                 </Text>
               </View>
               <TouchableOpacity onPress={onClose}>
@@ -177,11 +199,15 @@ export const AddAddressModal: React.FC<AddAddressModalProps> = ({
               className="w-full bg-sky-600 dark:bg-cyan-500 py-4 rounded-2xl flex-row justify-center items-center shadow-md active:bg-sky-700"
             >
               <Ionicons name="checkmark-circle" size={20} color="white" />
-              <Text className="text-sm font-bold text-white ml-2">배송지 저장하기</Text>
+              <Text className="text-sm font-bold text-white ml-2">
+                {isEditing ? '배송지 수정 완료 ✏️' : '배송지 저장하기'}
+              </Text>
             </TouchableOpacity>
           </ScrollView>
         </View>
       </View>
-    </Modal>
+    </TouchableWithoutFeedback>
+  </KeyboardAvoidingView>
+</Modal>
   );
 };

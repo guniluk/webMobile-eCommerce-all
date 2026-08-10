@@ -32,6 +32,28 @@ export const useAddAddressMutation = () => {
   });
 };
 
+export const useUpdateAddressMutation = () => {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      addressId,
+      addressData,
+    }: {
+      addressId: string;
+      addressData: Partial<Address>;
+    }) => {
+      const token = await getToken();
+      return api.updateAddress(addressId, addressData, token);
+    },
+    onSuccess: (updatedAddresses) => {
+      queryClient.setQueryData(['addresses'], updatedAddresses);
+      queryClient.invalidateQueries({ queryKey: ['addresses'] });
+    },
+  });
+};
+
 export const useDeleteAddressMutation = () => {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();

@@ -118,6 +118,18 @@ export interface UserProfile {
 
 export type User = UserProfile;
 
+export interface AppNotification {
+  id: string;
+  orderId?: string;
+  title: string;
+  message: string;
+  type: 'status_change' | 'payment' | 'delivery' | 'info';
+  statusBadge: string;
+  read: boolean;
+  createdAt: string;
+  orderProductNames?: string;
+}
+
 export interface Review {
   _id: string;
   productId: string;

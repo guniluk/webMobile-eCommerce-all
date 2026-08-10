@@ -10,7 +10,7 @@ interface HeaderProps {
 export const Header = React.memo(function Header({ title, subtitle }: HeaderProps) {
   return (
     <View className="flex-row justify-between items-center py-3 mb-3 border-b dark:border-slate-800/80 border-slate-200/60 pb-3">
-      <View>
+      <View className="flex-1 mr-2">
         <Text className="text-2xl font-black dark:text-white text-slate-900 tracking-tight">
           {title}
         </Text>
@@ -20,6 +20,7 @@ export const Header = React.memo(function Header({ title, subtitle }: HeaderProp
           </Text>
         ) : null}
       </View>
+
       <ThemeToggle />
     </View>
   );

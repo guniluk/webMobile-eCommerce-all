@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
-  Text,
   View,
+  Text,
   ScrollView,
   TouchableOpacity,
-  RefreshControl,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser, useAuth } from '@clerk/clerk-expo';
 import { useColorScheme } from 'nativewind';
+import { Ionicons } from '@expo/vector-icons';
 import { Header } from '../../components/Header';
 import { api } from '../../lib/api';
 
@@ -17,6 +18,7 @@ import { UserProfileCard } from '../../components/profile/UserProfileCard';
 import { OrderListTab } from '../../components/profile/OrderListTab';
 import { WishlistTab } from '../../components/profile/WishlistTab';
 import { AddressListTab } from '../../components/profile/AddressListTab';
+import { NotificationTab } from '../../components/profile/NotificationTab';
 import { AddAddressModal } from '../../components/profile/AddAddressModal';
 import { CreateReviewModal } from '../../components/profile/CreateReviewModal';
 
@@ -25,11 +27,12 @@ import { useWishlistQuery, useDeleteWishlistMutation } from '../../hooks/useWish
 import {
   useAddressesQuery,
   useAddAddressMutation,
+  useUpdateAddressMutation,
   useDeleteAddressMutation,
 } from '../../hooks/useAddressesQuery';
 import { useCreateReviewMutation } from '../../hooks/useCreateReviewMutation';
 import { useAddToCartMutation, useCartQuery } from '../../hooks/useCartQuery';
-import { Product } from '../../types';
+import { Product, AppNotification, Address } from '../../types';
 
 export default function ProfileScreen() {
   const { user } = useUser();
@@ -37,13 +40,13 @@ export default function ProfileScreen() {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'wishlist' | 'addresses'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'wishlist' | 'addresses' | 'notifications'>('orders');
+  const [readNotiIds, setReadNotiIds] = useState<string[]>([]);
 
-  // 🖼️ 이미지 로드 실패 관리 맵
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
-  // 📍 배송지 추가 모달 상태
   const [addAddressModalOpen, setAddAddressModalOpen] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [newLabel, setNewLabel] = useState('집');
   const [newFullName, setNewFullName] = useState('');
   const [newStreetAddress, setNewStreetAddress] = useState('');
@@ -53,7 +56,6 @@ export default function ProfileScreen() {
   const [newPhone, setNewPhone] = useState('');
   const [newIsDefault, setNewIsDefault] = useState(false);
 
-  // ⭐ 리뷰 작성 모달 상태
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewProductId, setReviewProductId] = useState<string | null>(null);
   const [reviewOrderId, setReviewOrderId] = useState<string | null>(null);
@@ -62,7 +64,6 @@ export default function ProfileScreen() {
 
   const isSyncedRef = useRef(false);
 
-  // ----------------- TanStack Queries & Mutations -----------------
   const {
     data: orders = [],
     isLoading: isOrdersLoading,
@@ -72,51 +73,31 @@ export default function ProfileScreen() {
 
   const {
     data: wishlist = [],
-    isRefetching: isWishlistRefetching,
     refetch: refetchWishlist,
   } = useWishlistQuery();
 
   const {
     data: addresses = [],
-    isRefetching: isAddressesRefetching,
     refetch: refetchAddresses,
   } = useAddressesQuery();
 
-  const { data: cartResponse } = useCartQuery();
+  const { data: cartData } = useCartQuery();
   const cartItemIds = useMemo(() => {
-    const items = cartResponse?.items || [];
+    const items = cartData?.items || [];
     return items
-      .map((item) => {
-        const prod = item.product || item.productId;
-        return typeof prod === 'object' && prod ? prod._id : (prod as string);
-      })
-      .filter(Boolean);
-  }, [cartResponse]);
+      .map((item) =>
+        typeof item.productId === 'object' ? item.productId._id : item.productId,
+      )
+      .filter((id): id is string => Boolean(id));
+  }, [cartData]);
 
   const deleteWishlistMutation = useDeleteWishlistMutation();
   const addAddressMutation = useAddAddressMutation();
+  const updateAddressMutation = useUpdateAddressMutation();
   const deleteAddressMutation = useDeleteAddressMutation();
   const createReviewMutation = useCreateReviewMutation();
   const addToCartMutation = useAddToCartMutation();
 
-  const handleAddToCart = (product: Product) => {
-    addToCartMutation.mutate(
-      { productId: product._id, quantity: 1 },
-      {
-        onSuccess: () => {
-          Alert.alert(
-            '장바구니 담기 성공 🎉',
-            `${product.name} 상품이 장바구니에 담겼습니다.`,
-          );
-        },
-        onError: (err: any) => {
-          Alert.alert('오류', err?.message || '장바구니 담기에 실패했습니다.');
-        },
-      },
-    );
-  };
-
-  // 유저 DB 동기화
   useEffect(() => {
     if (!isSyncedRef.current && user) {
       const syncUserData = async () => {
@@ -130,122 +111,257 @@ export default function ProfileScreen() {
           await api.syncUser(realUserData, token).catch(() => {});
           isSyncedRef.current = true;
         } catch {
-          // ignore error
+          // ignore
         }
       };
       syncUserData();
     }
   }, [user, getToken]);
 
-  const onRefresh = async () => {
-    await Promise.all([refetchOrders(), refetchWishlist(), refetchAddresses()]);
-  };
+  const generatedNotifications = useMemo<AppNotification[]>(() => {
+    if (!orders || orders.length === 0) return [];
+    const notis: AppNotification[] = [];
+
+    orders.forEach((ord) => {
+      const prodName =
+        (ord.orderItems?.[0]?.name) ||
+        (typeof ord.orderItems?.[0]?.product === 'object' ? ord.orderItems[0].product?.name : '') ||
+        '주문 상품';
+      const extraCount = (ord.orderItems?.length || 1) - 1;
+      const prodSummary = extraCount > 0 ? `${prodName} 외 ${extraCount}건` : prodName;
+      const dateStr = ord.createdAt
+        ? new Date(ord.createdAt).toLocaleDateString('ko-KR', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : '최근';
+
+      if (ord.isDelivered || ord.status === 'delivered') {
+        notis.push({
+          id: `noti-delivered-${ord._id}`,
+          orderId: ord._id,
+          title: '배송 완료',
+          message: `주문하신 [${prodSummary}] 상품이 성공적으로 배송 완료되었습니다. 리뷰를 남겨보세요!`,
+          type: 'delivery',
+          statusBadge: '배송완료',
+          read: readNotiIds.includes(`noti-delivered-${ord._id}`),
+          createdAt: dateStr,
+          orderProductNames: prodSummary,
+        });
+      }
+
+      if (ord.isPaid) {
+        notis.push({
+          id: `noti-paid-${ord._id}`,
+          orderId: ord._id,
+          title: ord.status === 'shipped' ? '배송 시작' : '결제 완료',
+          message:
+            ord.status === 'shipped'
+              ? `[${prodSummary}] 상품이 출발하여 배송 중입니다.`
+              : `[${prodSummary}] 결제가 확인되어 배송을 준비 중입니다.`,
+          type: ord.status === 'shipped' ? 'delivery' : 'payment',
+          statusBadge: ord.status === 'shipped' ? '배송중' : '결제완료',
+          read: readNotiIds.includes(`noti-paid-${ord._id}`),
+          createdAt: dateStr,
+          orderProductNames: prodSummary,
+        });
+      }
+    });
+
+    return notis;
+  }, [orders, readNotiIds]);
+
+  const unreadNotiCount = useMemo(
+    () => generatedNotifications.filter((n) => !n.read).length,
+    [generatedNotifications],
+  );
+
+  const handleMarkAsRead = useCallback((id: string) => {
+    setReadNotiIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  }, []);
+
+  const handleMarkAllAsRead = useCallback(() => {
+    const allIds = generatedNotifications.map((n) => n.id);
+    setReadNotiIds(allIds);
+  }, [generatedNotifications]);
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([refetchOrders(), refetchWishlist(), refetchAddresses()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refetchOrders, refetchWishlist, refetchAddresses]);
 
   const handleLogout = () => {
-    Alert.alert('로그아웃', '정말 로그아웃 하시겠습니까?', [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '로그아웃',
-        style: 'destructive',
-        onPress: async () => {
-          isSyncedRef.current = false;
-          await signOut();
+    Alert.alert(
+      '로그아웃 🚪',
+      '정말 로그아웃 하시겠습니까?',
+      [
+        {
+          text: '취소',
+          style: 'cancel',
         },
-      },
-    ]);
+        {
+          text: '로그아웃',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+            } catch {
+              Alert.alert('로그아웃 실패 ❌', '로그아웃 처리 중 문제가 발생했습니다.');
+            }
+          },
+        },
+      ],
+      { cancelable: true },
+    );
   };
 
-  const resetAddressForm = () => {
-    setNewLabel('집');
-    setNewFullName('');
-    setNewStreetAddress('');
-    setNewCity('서울');
-    setNewState('서울특별시');
-    setNewZipCode('');
-    setNewPhone('');
-    setNewIsDefault(addresses.length === 0);
-  };
+  const handleAddToCart = (product: Product) => {
+    const stockCount =
+      typeof product.stock === 'number'
+        ? product.stock
+        : typeof product.stockQuantity === 'number'
+        ? product.stockQuantity
+        : 0;
 
-  const openAddressModal = () => {
-    resetAddressForm();
-    setAddAddressModalOpen(true);
-  };
-
-  const handleAddAddress = () => {
-    if (!newLabel.trim()) {
-      Alert.alert('입력 오류', '배송지 별칭(예: 집, 회사)을 입력해주세요.');
-      return;
-    }
-    if (!newFullName.trim()) {
-      Alert.alert('입력 오류', '수령인 성명을 입력해주세요.');
-      return;
-    }
-    if (!newStreetAddress.trim()) {
-      Alert.alert('입력 오류', '도로명 주소를 입력해주세요.');
-      return;
-    }
-    if (!newZipCode.trim()) {
-      Alert.alert('입력 오류', '우편번호를 입력해주세요.');
-      return;
-    }
-    if (!newPhone.trim()) {
-      Alert.alert('입력 오류', '연락처를 입력해주세요.');
+    if (stockCount < 1 || product.inStock === false) {
+      Alert.alert('장바구니 담기 불가 🚫', '해당 상품은 현재 재고가 없어 장바구니에 담을 수 없습니다.');
       return;
     }
 
-    addAddressMutation.mutate(
-      {
-        label: newLabel.trim(),
-        fullName: newFullName.trim(),
-        streetAddress: newStreetAddress.trim(),
-        city: newCity.trim() || '서울',
-        state: newState.trim() || '서울특별시',
-        zipCode: newZipCode.trim(),
-        phoneNumber: newPhone.trim(),
-        isDefault: newIsDefault || addresses.length === 0,
-      },
+    addToCartMutation.mutate(
+      { productId: product._id, quantity: 1 },
       {
         onSuccess: () => {
-          setAddAddressModalOpen(false);
-          resetAddressForm();
-          Alert.alert('성공 🎉', '새로운 배송지가 성공적으로 등록되었습니다.');
+          Alert.alert('성공 🛒', `${product.name} 상품이 장바구니에 담겼습니다.`);
         },
-        onError: (err: any) => {
-          Alert.alert('오류', err?.message || '배송지 추가 실패');
+        onError: () => {
+          Alert.alert('오류 ❌', '장바구니 추가 중 오류가 발생했습니다.');
         },
       },
     );
   };
 
-  const handleDeleteAddress = (addressId: string) => {
-    deleteAddressMutation.mutate(addressId, {
-      onError: (err: any) => {
-        Alert.alert('오류', err?.message || '삭제 실패');
-      },
-    });
-  };
-
   const handleDeleteWishlist = (productId: string) => {
     deleteWishlistMutation.mutate(productId, {
       onSuccess: () => {
-        Alert.alert('완료', '위시리스트에서 삭제되었습니다.');
+        Alert.alert('완료', '위시리스트 항목이 삭제되었습니다.');
       },
-      onError: (err: any) => {
-        Alert.alert('오류', err?.message || '위시리스트 삭제 실패');
+      onError: () => {
+        Alert.alert('오류', '위시리스트 삭제 중 오류가 발생했습니다.');
       },
     });
   };
 
-  const handleImageError = (productId: string) => {
-    setFailedImages((prev) => ({ ...prev, [productId]: true }));
+  const handleImageError = (id: string) => {
+    setFailedImages((prev) => ({ ...prev, [id]: true }));
   };
 
-  const openReviewModal = (prodId: string, orderId: string, hasReviewed?: boolean) => {
-    if (hasReviewed) {
-      Alert.alert('알림 💡', '이미 해당 주문 상품에 대한 리뷰를 작성하셨습니다.');
+  const openAddressModal = () => {
+    setEditingAddress(null);
+    setNewLabel('집');
+    setNewFullName(user?.fullName || user?.firstName || '');
+    setNewStreetAddress('');
+    setNewCity('서울');
+    setNewState('서울특별시');
+    setNewZipCode('');
+    setNewPhone('');
+    setNewIsDefault(false);
+    setAddAddressModalOpen(true);
+  };
+
+  const openEditAddressModal = (address: Address) => {
+    setEditingAddress(address);
+    setNewLabel(address.label || '배송지');
+    setNewFullName(address.fullName || '');
+    setNewStreetAddress(address.streetAddress || '');
+    setNewCity(address.city || '서울');
+    setNewState(address.state || '서울특별시');
+    setNewZipCode(address.zipCode || '');
+    setNewPhone(address.phoneNumber || '');
+    setNewIsDefault(address.isDefault || false);
+    setAddAddressModalOpen(true);
+  };
+
+  const handleSaveAddress = () => {
+    if (!newFullName || !newStreetAddress || !newCity || !newZipCode || !newPhone) {
+      Alert.alert('입력 오류 ⚠️', '배송지 필수 항목을 모두 입력해 주세요.');
       return;
     }
-    setReviewProductId(prodId);
+
+    const payload = {
+      label: newLabel || '배송지',
+      fullName: newFullName,
+      streetAddress: newStreetAddress,
+      city: newCity,
+      state: newState || '서울특별시',
+      zipCode: newZipCode,
+      phoneNumber: newPhone,
+      isDefault: newIsDefault,
+    };
+
+    if (editingAddress && editingAddress._id) {
+      // ✏️ 배송지 수정
+      updateAddressMutation.mutate(
+        {
+          addressId: editingAddress._id,
+          addressData: payload,
+        },
+        {
+          onSuccess: () => {
+            setAddAddressModalOpen(false);
+            setEditingAddress(null);
+            Alert.alert('수정 완료 ✏️', '배송지 정보가 변경되었습니다.');
+          },
+          onError: () => {
+            Alert.alert('오류 ❌', '배송지 수정 중 오류가 발생했습니다.');
+          },
+        },
+      );
+    } else {
+      // 📍 배송지 추가
+      addAddressMutation.mutate(payload, {
+        onSuccess: () => {
+          setAddAddressModalOpen(false);
+          setEditingAddress(null);
+          Alert.alert('성공 📍', '새로운 배송지가 성공적으로 추가되었습니다.');
+        },
+        onError: () => {
+          Alert.alert('오류 ❌', '배송지 추가 중 오류가 발생했습니다.');
+        },
+      });
+    }
+  };
+
+  const handleDeleteAddress = (addressId: string) => {
+    Alert.alert('배송지 삭제', '이 배송지를 정말 삭제하시겠습니까?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: () => {
+          deleteAddressMutation.mutate(addressId, {
+            onSuccess: () => {
+              Alert.alert('삭제 완료', '배송지가 삭제되었습니다.');
+            },
+            onError: () => {
+              Alert.alert('오류', '배송지 삭제 중 오류가 발생했습니다.');
+            },
+          });
+        },
+      },
+    ]);
+  };
+
+  const openReviewModal = (productId: string, orderId: string) => {
+    setReviewProductId(productId);
     setReviewOrderId(orderId);
     setReviewRating(5);
     setReviewComment('');
@@ -255,7 +371,7 @@ export default function ProfileScreen() {
   const handleSubmitReview = () => {
     if (!reviewProductId || !reviewOrderId) return;
     if (!reviewComment.trim()) {
-      Alert.alert('입력 요청 💡', '솔직한 리뷰 소감 메시지를 작성해 주세요.');
+      Alert.alert('입력 오류', '리뷰 내용을 작성해 주세요.');
       return;
     }
 
@@ -270,12 +386,12 @@ export default function ProfileScreen() {
         onSuccess: () => {
           setReviewModalOpen(false);
           setReviewComment('');
-          Alert.alert('성공 🎉', '소중한 리뷰 메시지가 성공적으로 등록되었습니다.');
+          Alert.alert('성공', '소중한 리뷰 메시지가 성공적으로 등록되었습니다.');
         },
         onError: (err: any) => {
           const msg = err?.message || '리뷰 등록 실패';
           if (msg.includes('이미') || msg.includes('exist')) {
-            Alert.alert('알림 💡', '이미 작성된 리뷰입니다. 추가 입력이 불가합니다.');
+            Alert.alert('알림', '이미 작성된 리뷰입니다.');
           } else {
             Alert.alert('오류', msg);
           }
@@ -284,15 +400,13 @@ export default function ProfileScreen() {
     );
   };
 
-  const isRefreshingAny = isOrdersRefetching || isWishlistRefetching || isAddressesRefetching;
-
   return (
     <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 dark:bg-slate-900 bg-slate-100">
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 90 }}
         refreshControl={
           <RefreshControl
-            refreshing={isRefreshingAny}
+            refreshing={isRefreshing}
             onRefresh={onRefresh}
             tintColor="#0284c7"
           />
@@ -300,128 +414,283 @@ export default function ProfileScreen() {
       >
         <Header title="Profile 👤" subtitle="Manage your account & preferences" />
 
-        {/* 유저 프로필 카드 */}
         <UserProfileCard user={user} onLogout={handleLogout} />
 
-        {/* 세그먼트 탭 선택 */}
-        <View className="flex-row mb-4 bg-slate-200 dark:bg-slate-800 p-1 rounded-2xl">
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setActiveTab('orders')}
-            style={{
-              flex: 1,
-              paddingVertical: 10,
-              borderRadius: 12,
-              alignItems: 'center',
-              backgroundColor: activeTab === 'orders' ? (isDark ? '#334155' : '#ffffff') : 'transparent',
-            }}
+        {/* Horizontal Scrollable Tab Bar */}
+        <View className="mb-4">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingRight: 10 }}
+            className="flex-row"
           >
-            <Text
+            {/* Orders */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setActiveTab('orders')}
               style={{
-                fontSize: 12,
-                fontWeight: '700',
-                color: activeTab === 'orders' ? (isDark ? '#38bdf8' : '#0284c7') : '#94a3b8',
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderRadius: 14,
+                marginRight: 8,
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: activeTab === 'orders' ? (isDark ? '#334155' : '#ffffff') : (isDark ? '#1e293b' : '#f1f5f9'),
+                borderWidth: 1,
+                borderColor: activeTab === 'orders' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#334155' : '#e2e8f0'),
               }}
             >
-              주문내역 📦 ({orders.length})
-            </Text>
-          </TouchableOpacity>
+              <Ionicons
+                name="cube-outline"
+                size={16}
+                color={activeTab === 'orders' ? (isDark ? '#38bdf8' : '#0284c7') : '#94a3b8'}
+                style={{ marginRight: 5 }}
+              />
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: activeTab === 'orders' ? '800' : '700',
+                  color: activeTab === 'orders' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#94a3b8' : '#64748b'),
+                }}
+              >
+                주문내역
+              </Text>
+              <View
+                className={`ml-1.5 px-1.5 py-0.5 rounded-full ${
+                  activeTab === 'orders'
+                    ? 'bg-sky-500/20 dark:bg-cyan-400/20'
+                    : 'bg-slate-200 dark:bg-slate-700'
+                }`}
+              >
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: '800',
+                    color: activeTab === 'orders' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#94a3b8' : '#64748b'),
+                  }}
+                >
+                  {orders.length}
+                </Text>
+              </View>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setActiveTab('wishlist')}
-            style={{
-              flex: 1,
-              paddingVertical: 10,
-              borderRadius: 12,
-              alignItems: 'center',
-              backgroundColor: activeTab === 'wishlist' ? (isDark ? '#334155' : '#ffffff') : 'transparent',
-            }}
-          >
-            <Text
+            {/* Wishlist */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setActiveTab('wishlist')}
               style={{
-                fontSize: 12,
-                fontWeight: '700',
-                color: activeTab === 'wishlist' ? (isDark ? '#38bdf8' : '#0284c7') : '#94a3b8',
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderRadius: 14,
+                marginRight: 8,
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: activeTab === 'wishlist' ? (isDark ? '#334155' : '#ffffff') : (isDark ? '#1e293b' : '#f1f5f9'),
+                borderWidth: 1,
+                borderColor: activeTab === 'wishlist' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#334155' : '#e2e8f0'),
               }}
             >
-              위시리스트 ❤️ ({wishlist.length})
-            </Text>
-          </TouchableOpacity>
+              <Ionicons
+                name="heart-outline"
+                size={16}
+                color={activeTab === 'wishlist' ? (isDark ? '#38bdf8' : '#0284c7') : '#94a3b8'}
+                style={{ marginRight: 5 }}
+              />
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: activeTab === 'wishlist' ? '800' : '700',
+                  color: activeTab === 'wishlist' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#94a3b8' : '#64748b'),
+                }}
+              >
+                위시리스트
+              </Text>
+              <View
+                className={`ml-1.5 px-1.5 py-0.5 rounded-full ${
+                  activeTab === 'wishlist'
+                    ? 'bg-sky-500/20 dark:bg-cyan-400/20'
+                    : 'bg-slate-200 dark:bg-slate-700'
+                }`}
+              >
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: '800',
+                    color: activeTab === 'wishlist' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#94a3b8' : '#64748b'),
+                  }}
+                >
+                  {wishlist.length}
+                </Text>
+              </View>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setActiveTab('addresses')}
-            style={{
-              flex: 1,
-              paddingVertical: 10,
-              borderRadius: 12,
-              alignItems: 'center',
-              backgroundColor: activeTab === 'addresses' ? (isDark ? '#334155' : '#ffffff') : 'transparent',
-            }}
-          >
-            <Text
+            {/* Addresses */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setActiveTab('addresses')}
               style={{
-                fontSize: 12,
-                fontWeight: '700',
-                color: activeTab === 'addresses' ? (isDark ? '#38bdf8' : '#0284c7') : '#94a3b8',
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderRadius: 14,
+                marginRight: 8,
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: activeTab === 'addresses' ? (isDark ? '#334155' : '#ffffff') : (isDark ? '#1e293b' : '#f1f5f9'),
+                borderWidth: 1,
+                borderColor: activeTab === 'addresses' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#334155' : '#e2e8f0'),
               }}
             >
-              배송지 📍 ({addresses.length})
-            </Text>
-          </TouchableOpacity>
+              <Ionicons
+                name="location-outline"
+                size={16}
+                color={activeTab === 'addresses' ? (isDark ? '#38bdf8' : '#0284c7') : '#94a3b8'}
+                style={{ marginRight: 5 }}
+              />
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: activeTab === 'addresses' ? '800' : '700',
+                  color: activeTab === 'addresses' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#94a3b8' : '#64748b'),
+                }}
+              >
+                배송지
+              </Text>
+              <View
+                className={`ml-1.5 px-1.5 py-0.5 rounded-full ${
+                  activeTab === 'addresses'
+                    ? 'bg-sky-500/20 dark:bg-cyan-400/20'
+                    : 'bg-slate-200 dark:bg-slate-700'
+                }`}
+              >
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: '800',
+                    color: activeTab === 'addresses' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#94a3b8' : '#64748b'),
+                  }}
+                >
+                  {addresses.length}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Notifications */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setActiveTab('notifications')}
+              style={{
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderRadius: 14,
+                marginRight: 8,
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: activeTab === 'notifications' ? (isDark ? '#334155' : '#ffffff') : (isDark ? '#1e293b' : '#f1f5f9'),
+                borderWidth: 1,
+                borderColor: activeTab === 'notifications' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#334155' : '#e2e8f0'),
+              }}
+            >
+              <Ionicons
+                name="notifications-outline"
+                size={16}
+                color={activeTab === 'notifications' ? (isDark ? '#38bdf8' : '#0284c7') : '#94a3b8'}
+                style={{ marginRight: 5 }}
+              />
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: activeTab === 'notifications' ? '800' : '700',
+                  color: activeTab === 'notifications' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#94a3b8' : '#64748b'),
+                }}
+              >
+                알림
+              </Text>
+              <View
+                className={`ml-1.5 px-1.5 py-0.5 rounded-full ${
+                  unreadNotiCount > 0
+                    ? 'bg-rose-500'
+                    : activeTab === 'notifications'
+                    ? 'bg-sky-500/20 dark:bg-cyan-400/20'
+                    : 'bg-slate-200 dark:bg-slate-700'
+                }`}
+              >
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: '800',
+                    color: unreadNotiCount > 0
+                      ? '#ffffff'
+                      : activeTab === 'notifications' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#94a3b8' : '#64748b'),
+                  }}
+                >
+                  {generatedNotifications.length}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
 
-        {/* 1️⃣ 주문 내역 탭 */}
-        {activeTab === 'orders' && (
-          <OrderListTab
-            orders={orders}
-            loading={isOrdersLoading}
-            refreshing={isOrdersRefetching}
-            onOpenReviewModal={openReviewModal}
-          />
-        )}
+        {/* Content Area */}
+        <View className="mb-4">
+          {activeTab === 'orders' && (
+            <OrderListTab
+              orders={orders}
+              loading={isOrdersLoading}
+              refreshing={isOrdersRefetching}
+              onOpenReviewModal={openReviewModal}
+            />
+          )}
 
-        {/* 2️⃣ 위시리스트 탭 */}
-        {activeTab === 'wishlist' && (
-          <WishlistTab
-            wishlist={wishlist}
-            failedImages={failedImages}
-            addingProductId={
-              addToCartMutation.isPending
-                ? addToCartMutation.variables?.productId
-                : null
-            }
-            cartItemIds={cartItemIds}
-            onAddToCart={handleAddToCart}
-            onDeleteWishlist={handleDeleteWishlist}
-            onImageError={handleImageError}
-          />
-        )}
+          {activeTab === 'wishlist' && (
+            <WishlistTab
+              wishlist={wishlist}
+              failedImages={failedImages}
+              addingProductId={
+                addToCartMutation.isPending
+                  ? addToCartMutation.variables?.productId
+                  : null
+              }
+              cartItemIds={cartItemIds}
+              onAddToCart={handleAddToCart}
+              onDeleteWishlist={handleDeleteWishlist}
+              onImageError={handleImageError}
+            />
+          )}
 
-        {/* 3️⃣ 배송지 관리 탭 */}
-        {activeTab === 'addresses' && (
-          <AddressListTab
-            addresses={addresses}
-            onOpenAddModal={openAddressModal}
-            onDeleteAddress={handleDeleteAddress}
-          />
-        )}
+          {activeTab === 'addresses' && (
+            <AddressListTab
+              addresses={addresses}
+              onOpenAddModal={openAddressModal}
+              onEditAddress={openEditAddressModal}
+              onDeleteAddress={handleDeleteAddress}
+            />
+          )}
 
-        <View className="dark:bg-slate-800/80 bg-white/90 p-5 rounded-2xl border dark:border-slate-700 border-slate-200 shadow-sm mb-4">
-          <Text className="text-sm font-bold dark:text-cyan-400 text-sky-600 mb-1.5">
+          {activeTab === 'notifications' && (
+            <NotificationTab
+              notifications={generatedNotifications}
+              loading={isOrdersLoading}
+              onMarkAsRead={handleMarkAsRead}
+              onMarkAllAsRead={handleMarkAllAsRead}
+            />
+          )}
+        </View>
+
+        {/* 서비스 정보 안내 */}
+        <View className="dark:bg-slate-800/80 bg-white/90 p-4 rounded-2xl border dark:border-slate-700 border-slate-200 shadow-sm mb-4">
+          <Text className="text-sm font-bold dark:text-cyan-400 text-sky-600 mb-1">
             서비스 정보 📱
           </Text>
-          <Text className="text-xs dark:text-slate-400 text-slate-600 leading-5">
-            React Native + Expo Router + TanStack Query 풀스택 쇼핑몰 앱입니다. 위시리스트, 배송지 관리, 상품 리뷰 등 백엔드 모든 API 서비스가 실시간 연동됩니다.
+          <Text className="text-xs dark:text-slate-400 text-slate-500 leading-5">
+            주문 내역, 위시리스트 및 배송지 정보는 계정과 실시간 연동됩니다.
           </Text>
         </View>
       </ScrollView>
 
-      {/* 📍 새 배송지 등록 모달 */}
       <AddAddressModal
         visible={addAddressModalOpen}
         isDark={isDark}
+        isEditing={!!editingAddress}
         newLabel={newLabel}
         newFullName={newFullName}
         newStreetAddress={newStreetAddress}
@@ -438,11 +707,13 @@ export default function ProfileScreen() {
         onChangeZipCode={setNewZipCode}
         onChangePhone={setNewPhone}
         onChangeIsDefault={setNewIsDefault}
-        onClose={() => setAddAddressModalOpen(false)}
-        onSubmit={handleAddAddress}
+        onClose={() => {
+          setAddAddressModalOpen(false);
+          setEditingAddress(null);
+        }}
+        onSubmit={handleSaveAddress}
       />
 
-      {/* ⭐ 리뷰 작성 모달 */}
       <CreateReviewModal
         visible={reviewModalOpen}
         isDark={isDark}

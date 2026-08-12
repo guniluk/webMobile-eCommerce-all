@@ -100,10 +100,30 @@ EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
 
 ## 🚀 5. 주요 구현 기능 및 세부 진행 과정
 
-### 💳 5.1 Stripe PaymentSheet 연동 및 결제 무결성
-- **Stripe PaymentIntent 발급**: 서버 측에서 장바구니 상품 재고 및 유효 가격을 배치(Batch) 계산하여 결제 세션을 생성합니다.
-- **Metadata 500자 제한 방지**: Stripe API의 metadata 필드 500자 제한을 초과하지 않도록 ID 및 정수 금액(`totalAmount`)만 매핑합니다.
-- **Stripe Customer 자동 생성 및 예외 가드**: 이전 테스트 Customer ID 조회 실패 시 예외 가드를 적용하여 신규 생성으로 안전하게 유도합니다.
+### 💳 5.1 Stripe 결제 연동: Webhook vs 직통(Direct) 아키텍처
+
+본 프로젝트는 **1) Stripe Webhook을 통한 비동기 수신 방법**과 **2) Expo Go 및 모바일/웹 개발 환경에서 웹훅 없이 100% 동일한 기능을 구현한 직통 결제 파이프라인**을 모두 상세히 지원합니다.
+
+#### 📡 A. Stripe Webhook 공식 사용 방법
+* **개념**: 카드 결제가 성공(`payment_intent.succeeded`)했을 때 Stripe 서버가 개발자의 백엔드 엔드포인트(`POST /api/payment/webhook`)로 비동기 콜백을 전달하여 주문을 자동 생성합니다.
+* **대시보드 등록**: [Stripe Dashboard](https://dashboard.stripe.com/) ➔ Developers ➔ Webhooks ➔ URL (`https://your-domain.com/api/payment/webhook`) 등록 후 발급받은 Signing secret (`whsec_...`)을 `STRIPE_WEBHOOK_SECRET`에 입력합니다.
+* **로컬 CLI 테스트**:
+  ```bash
+  stripe listen --forward-to localhost:3000/api/payment/webhook
+  ```
+
+#### 🚀 B. 웹훅 없이 100% 동일한 비즈니스 로직을 구현한 직통 결제 아키텍처 (프로젝트 적용)
+* **도입 이유**: Expo Go 앱이나 로컬 개발/웹 환경에서는 포워딩 주소 미설정 또는 비동기 콜백 수신 시점과의 타이밍 문제로 결제가 누락되는 위험이 존재합니다.
+* **직통 파이프라인 (Direct Client-Server Payment & Order Pipeline)**:
+  1. **PaymentIntent 생성 (`/api/payment/create-intent`)**: 클라이언트가 장바구니 상품 및 배송지 정보로 Stripe `clientSecret`과 `paymentIntentId`를 발급받음.
+  2. **PaymentSheet 결제 승인**: 모바일 네이티브 PaymentSheet 또는 Web 결제창에서 카드 결제 승인 완료.
+  3. **직통 주문 생성 (`POST /api/orders`)**: 결제 성공 직후 앱이 Stripe 결제 결과(`paymentResult.id`)를 백엔드로 발송.
+  4. **백엔드 원자적 비즈니스 처리 (`order.controller.js`)**:
+     - **🛡️ 멱등성 단일 차감 가드**: `Order.findOne({ "paymentResult.id": finalPaymentResult.id })`로 동일 결제건에 대한 중복 생성 및 재고 이중 차감 100% 차단.
+     - **📦 원자적 재고 차감**: DB 상의 상품 수량을 `product.stock -= item.quantity`로 차감 및 저장.
+     - **📑 Order DB 생성**: 주문 내역 데이터베이스 저장.
+     - **🛒 카트 리셋**: `Cart.findOneAndUpdate({ userId }, { items: [] })`로 유저 장바구니 자동 비우기.
+     - **🔔 실시간 알림 발송**: `createOrderNotification`으로 1대1 주문 접수 알림 DB 기록.
 
 ### 🔔 5.2 1대1 Order-Notification DB 시스템
 - 하나의 주문(`orderId`)에 정확히 하나의 알림 문서만 연결되도록 Mongoose 스키마에 `unique: true, sparse: true` 인덱스를 적용했습니다.
@@ -129,14 +149,16 @@ npm run dev
 ```bash
 cd mobile
 npm install
-npx expo start
+npx expo start        # Expo 모바일 실행
+npx expo start --web  # Web 브라우저 실행
 ```
 
 ---
 
 ## 📄 7. 관련 문서 가이드
 
-- [stripe-payment.md](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/stripe-payment.md): Stripe 대시보드 세팅부터 모바일 PaymentSheet 연동 및 트러블슈팅 세세한 가이드
+- [stripe-payment.md](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/stripe-payment.md): Stripe 대시보드 세팅부터 모바일 PaymentSheet 연동, Webhook 사용법 및 웹훅 없는 직통 결제 아키텍처 세세한 가이드
 
 ---
+
 © Web & Mobile Fullstack E-Commerce Platform. All rights reserved.

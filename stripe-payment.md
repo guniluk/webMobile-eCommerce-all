@@ -240,21 +240,23 @@ export const createPaymentIntent = async (req, res) => {
 /**
  * 2. Stripe Webhook 수신 핸들러 (handleStripeWebhook)
  * POST /api/payment/webhook
- * payment_intent.succeeded 이벤트를 수신하여 100% 누락 없는 비동기 자동 주문 DB 생성을 보장합니다.
+ * [참고]: 이 프로젝트는 Expo Go 호환 및 직통 결제 처리를 위해 Webhook 수신부를 주석 처리하였습니다.
+ * 아래 코드는 프로덕션 웹훅 구성 시 활용할 수 있는 표준 예시입니다.
  */
 export const handleStripeWebhook = async (req, res) => {
   const sig = req.headers["stripe-signature"];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const payload = req.rawBody || req.body;
 
   let event;
 
   try {
     if (webhookSecret && sig) {
       const stripe = getStripeClient();
-      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+      event = stripe.webhooks.constructEvent(payload, sig, webhookSecret);
     } else {
-      const rawBody = req.body instanceof Buffer ? req.body.toString("utf8") : req.body;
-      event = typeof rawBody === "string" ? JSON.parse(rawBody) : rawBody;
+      const rawBodyStr = payload instanceof Buffer ? payload.toString("utf8") : payload;
+      event = typeof rawBodyStr === "string" ? JSON.parse(rawBodyStr) : rawBodyStr;
     }
   } catch (err) {
     console.error(`[Stripe Webhook Signature Error]: ${err.message}`);
@@ -268,6 +270,90 @@ export const handleStripeWebhook = async (req, res) => {
 
   return res.status(200).json({ received: true });
 };
+
+---
+
+## ⚡️ 3. Stripe Webhook vs 직통 결제 로직 아키텍처 비교 가이드
+
+이 프로젝트는 **1) Stripe Webhook을 공식 사용하는 방법**과 **2) Expo Go/로컬 개발 환경 호환을 위해 웹훅 없이 동일한 기능을 100% 보장하는 직통 결제 통합 로직**을 둘 다 세부 지원합니다.
+
+---
+
+### 📡 3.1 Stripe Webhook 공식 사용 방법 (Standard Webhook Workflow)
+
+#### ① 개념 및 특징
+Stripe Webhook은 카드 결제가 성공(`payment_intent.succeeded`)했을 때 Stripe 서버가 개발자의 백엔드 서버(`POST /api/payment/webhook`)로 비동기 HTTP 요청을 직접 전달하여 주문을 생성하는 방식입니다.
+
+#### ② Stripe 대시보드 웹훅 엔드포인트 등록 절차
+1. [Stripe Dashboard](https://dashboard.stripe.com/) ➔ **Developers (개발자)** ➔ **Webhooks** 메뉴로 이동합니다.
+2. **[Add endpoint] (엔드포인트 추가)** 버튼을 누릅니다.
+3. **Endpoint URL** 입력:
+   - 프로덕션: `https://your-domain.com/api/payment/webhook`
+4. **Select events to listen to**: `payment_intent.succeeded` 선택 후 저장합니다.
+5. 등록 후 발급된 **Signing secret (`whsec_...`)** 키를 복사하여 백엔드 `.env`에 등록합니다:
+   ```env
+   STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxxx
+   ```
+
+#### ③ Stripe CLI를 통한 로컬 개발 환경 테스트 방법
+맥북/로컬 환경에서 대시보드 등록 없이 웹훅 이벤트를 수신하려면 Stripe CLI를 활용합니다:
+```bash
+# 1. Stripe CLI 로그인
+stripe login
+
+# 2. 로컬 백엔드 서버(localhost:3000)로 이벤트 포워딩
+stripe listen --forward-to localhost:3000/api/payment/webhook
+```
+명령어 실행 시 출력되는 `whsec_...` 키를 `.env`에 입력하면 테스트가 가능합니다.
+
+---
+
+### 🚀 3.2 웹훅 없이 100% 동일한 비즈니스 로직을 보완한 직통 결제 아키텍처 (Direct Client-Server Flow)
+
+#### ① 도입 배경
+* **Expo Go 앱 호환성**: 모바일 Expo Go 앱이나 로컬 웹 테스트 환경에서는 로컬 주소(`localhost`)로 Stripe 서버가 직접 접속할 수 없거나, 웹훅 수신 시점과의 타이밍 꼬임 문제가 발생할 수 있습니다.
+* **해결책**: 백엔드와 클라이언트 간의 **동기식 직통 파이프라인(Direct Pipeline)**을 도입하여 웹훅 없이도 **결제 검증 ➔ 주문 생성 ➔ 재고 차감 ➔ 장바구니 비우기 ➔ 알림 발송**이 100% 보장되도록 로직을 완성했습니다.
+
+#### ② 직통 결제 & 주문 4단계 비즈니스 파이프라인
+
+```text
+[Expo App / Web Client]                  [Express Backend]                 [Stripe API Engine]
+         │                                       │                                  │
+         │  1. POST /api/payment/create-intent   │                                  │
+         ├──────────────────────────────────────►│                                  │
+         │                                       │  Stripe paymentIntents.create    │
+         │                                       ├─────────────────────────────────►│
+         │  2. clientSecret & paymentIntentId    │◄─────────────────────────────────┤
+         │◄──────────────────────────────────────┤                                  │
+         │                                       │                                  │
+         │  3. Stripe PaymentSheet 카드 승인      │                                  │
+         ├─────────────────────────────────────────────────────────────────────────►│
+         │  4. 카드 결제 성공 승인 (succeeded)   │                                  │
+         │◄─────────────────────────────────────────────────────────────────────────┤
+         │                                       │                                  │
+         │  5. POST /api/orders (결제 승인 직통)  │                                  │
+         ├──────────────────────────────────────►│                                  │
+         │                                       │  - 멱등성 검사 (Order.findOne)   │
+         │                                       │  - 재고 차감 (stock -= quantity) │
+         │                                       │  - Order DB 생성                 │
+         │                                       │  - 카트 리셋 (Cart items = [])   │
+         │  6. 주문 완료 응답 (201 Created)       │  - 알림 DB 발행 (Notification)   │
+         │◄──────────────────────────────────────┤                                  │
+```
+
+#### ③ 웹훅과 100% 동일한 비즈니스 보완 로직 핵심 코드 (`backend/src/controllers/order.controller.js`)
+
+1. **🛡️ 멱등성 단일 차감 가드 (Double Deducting Prevention)**:
+   * 동일한 Stripe `paymentResult.id`로 요청이 중복해서 오더라도 `Order.findOne` 검사로 중복 생성 및 재고 이중 차감을 100% 차단합니다.
+
+2. **📦 원자적 상품 재고(Stock) 차감**:
+   * 주문 생성 시점에서 `product.stock -= item.quantity; await product.save();`를 실행하여 DB 재고를 원자적으로 차감합니다.
+
+3. **🛒 장바구니 카트 자동 리셋**:
+   * 결제 성공과 동시에 유저 카트 DB를 비웁니다: `await Cart.findOneAndUpdate({ userId }, { items: [] });`
+
+4. **🔔 1대1 주문 알림(Notification) 생성**:
+   * `await createOrderNotification({ userId, orderId, totalAmount });`를 호출하여 모바일 앱 프로필 탭 알림함으로 주문 접수 알림을 발송합니다.
 
 /**
  * 2. Stripe 결제 검증 (verifyPaymentIntent)

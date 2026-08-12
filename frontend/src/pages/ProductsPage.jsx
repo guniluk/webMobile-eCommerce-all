@@ -114,7 +114,8 @@ const ProductsPage = () => {
         product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.category?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory =
-        selectedCategory === "ALL" || product.category === selectedCategory;
+        selectedCategory === "ALL" ||
+        product.category?.toLowerCase() === selectedCategory.toLowerCase();
       return matchesSearch && matchesCategory;
     });
   }, [products, searchTerm, selectedCategory]);
@@ -156,11 +157,11 @@ const ProductsPage = () => {
             className="select select-sm select-bordered bg-base-200 text-base-content text-xs"
           >
             <option value="ALL">전체 카테고리</option>
-            <option value="Electronics">Electronics</option>
-            <option value="Clothing">Clothing</option>
-            <option value="Home">Home & Living</option>
-            <option value="Beauty">Beauty</option>
             <option value="Books">Books</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Fashion">Fashion</option>
+            <option value="Home">Home & Living</option>
+            <option value="Sports">Sports</option>
           </select>
         </div>
 

@@ -208,11 +208,11 @@ const ProductModal = memo(({ isOpen, onClose, onSubmit, initialData, isSubmittin
               className="select select-bordered w-full bg-slate-800 text-sm text-slate-100"
             >
               <option value="">카테고리 선택</option>
-              <option value="Electronics">Electronics (전자기기)</option>
-              <option value="Clothing">Clothing (의류/패션)</option>
-              <option value="Home">Home & Living (생활/가전)</option>
-              <option value="Beauty">Beauty (뷰티/화장품)</option>
               <option value="Books">Books (도서)</option>
+              <option value="Electronics">Electronics (전자기기)</option>
+              <option value="Fashion">Fashion (패션/의류)</option>
+              <option value="Home">Home & Living (생활/가전)</option>
+              <option value="Sports">Sports (스포츠/레저)</option>
             </select>
           </div>
 

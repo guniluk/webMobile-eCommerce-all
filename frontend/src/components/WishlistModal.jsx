@@ -1,5 +1,48 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { X, Heart, Package, Tag } from "lucide-react";
+
+const WishlistItem = memo(({ name, category, price, image }) => {
+  const [imageError, setImageError] = useState(false);
+
+  return (
+    <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-base-200/50 border border-base-300 hover:border-primary/40 transition-all shadow-sm">
+      {/* 상품 이미지 */}
+      <div className="w-14 h-14 rounded-xl border border-base-300 overflow-hidden bg-base-100 shrink-0 flex items-center justify-center">
+        {image && !imageError ? (
+          <img
+            src={image}
+            alt={name}
+            className="w-full h-full object-cover"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <Package className="w-6 h-6 text-base-content/30" />
+        )}
+      </div>
+
+      {/* 상품 정보 */}
+      <div className="flex-1 min-w-0">
+        <h4
+          className="font-bold text-sm text-base-content truncate"
+          title={name}
+        >
+          {name}
+        </h4>
+        {category && (
+          <div className="flex items-center gap-1 text-[11px] text-base-content/60 mt-0.5">
+            <Tag className="w-3 h-3 text-primary/70" />
+            <span className="truncate">{category}</span>
+          </div>
+        )}
+        <p className="text-xs font-black text-primary mt-1">
+          ₩{(price || 0).toLocaleString()}
+        </p>
+      </div>
+    </div>
+  );
+});
+
+WishlistItem.displayName = "WishlistItem";
 
 const WishlistModal = memo(({ isOpen, onClose, customer }) => {
   if (!isOpen || !customer) return null;
@@ -55,50 +98,17 @@ const WishlistModal = memo(({ isOpen, onClose, customer }) => {
                 const productCategory = isObject ? item.category : "-";
                 const productPrice = isObject ? item.price : 0;
                 const productImage = isObject
-                  ? item.image || item.images?.[0]
+                  ? item.images?.[0] || item.image || item.imageUrl
                   : null;
 
                 return (
-                  <div
-                    key={isObject ? item._id : index}
-                    className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-base-200/50 border border-base-300 hover:border-primary/40 transition-all shadow-sm"
-                  >
-                    {/* 상품 이미지 */}
-                    <div className="w-14 h-14 rounded-xl border border-base-300 overflow-hidden bg-base-100 shrink-0 flex items-center justify-center">
-                      {productImage ? (
-                        <img
-                          src={productImage}
-                          alt={productName}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.style.display = "none";
-                          }}
-                        />
-                      ) : (
-                        <Package className="w-6 h-6 text-base-content/30" />
-                      )}
-                    </div>
-
-                    {/* 상품 정보 */}
-                    <div className="flex-1 min-w-0">
-                      <h4
-                        className="font-bold text-sm text-base-content truncate"
-                        title={productName}
-                      >
-                        {productName}
-                      </h4>
-                      {productCategory && (
-                        <div className="flex items-center gap-1 text-[11px] text-base-content/60 mt-0.5">
-                          <Tag className="w-3 h-3 text-primary/70" />
-                          <span className="truncate">{productCategory}</span>
-                        </div>
-                      )}
-                      <p className="text-xs font-black text-primary mt-1">
-                        ₩{productPrice.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
+                  <WishlistItem
+                    key={isObject && item._id ? item._id : index}
+                    name={productName}
+                    category={productCategory}
+                    price={productPrice}
+                    image={productImage}
+                  />
                 );
               })}
             </div>

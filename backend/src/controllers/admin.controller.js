@@ -278,7 +278,7 @@ export const getAllCustomers = async (_, res) => {
   try {
     const customers = await User.find()
       .select("name email imageUrl addresses wishList createdAt")
-      .populate("wishList", "name price image category")
+      .populate("wishList", "name price image images category")
       .sort({ createdAt: -1 })
       .lean();
     return res.status(200).json({ customers });

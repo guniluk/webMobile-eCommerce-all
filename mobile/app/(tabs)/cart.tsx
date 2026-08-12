@@ -26,7 +26,7 @@ import {
 } from "../../hooks/useCartQuery";
 import { useAddressesQuery } from "../../hooks/useAddressesQuery";
 import { useCreateOrderMutation } from "../../hooks/useOrdersQuery";
-import { useStripe } from "@stripe/stripe-react-native";
+import { useStripe } from "../../lib/stripe";
 import * as Sentry from "@sentry/react-native";
 
 export default function CartScreen() {

@@ -10,7 +10,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as WebBrowser from 'expo-web-browser';
 import { tokenCache } from '../lib/cache';
 import * as Sentry from '@sentry/react-native';
-import { StripeProvider } from '@stripe/stripe-react-native';
+import { StripeProvider } from '../lib/stripe';
 
 WebBrowser.maybeCompleteAuthSession();
 

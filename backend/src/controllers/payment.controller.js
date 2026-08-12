@@ -205,10 +205,17 @@ export const createPaymentIntent = async (req, res) => {
 
 /**
  * 2. Stripe Webhook 수신 핸들러 (handleStripeWebhook)
- * - POST /api/payment/webhook
- * - payment_intent.succeeded 이벤트 수신 시 100% 누락 없는 비동기 주문 DB 생성을 처리합니다.
+ * [Expo Go 환경 호환을 위해 주석 처리됨]
+ * Expo Go 환경에서는 외부 Webhook 비동기 콜백 대신 결제 승인 후 직통 API 요청(/api/orders)을 통해
+ * 웹훅과 동일한 효과(주문 생성, 재고 차감, 카트 비우기, 알림 발송)를 처리합니다.
  */
 export const handleStripeWebhook = async (req, res) => {
+  // Expo Go 및 직통 결제 흐름 사용으로 인해 Webhook 수신 비활성화
+  return res.status(200).json({
+    message: "Stripe Webhook은 Expo Go 직통 결제 모드로 동작 중입니다.",
+    received: true,
+  });
+  /*
   const sig = req.headers["stripe-signature"];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   const payload = req.rawBody || req.body;

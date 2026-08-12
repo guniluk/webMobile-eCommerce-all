@@ -18,7 +18,21 @@ export const getProductImageSource = (
     return CATEGORY_IMAGES[catKey] || require('../assets/images/icon.png');
   }
 
-  const onlineUrl = product.image || product.images?.[0];
+  // 1. 유효한 온라인 이미지 URL 찾기 (images 배열 또는 image 필드)
+  let onlineUrl = '';
+  if (Array.isArray(product.images) && product.images.length > 0) {
+    onlineUrl = product.images.find(
+      (img) =>
+        img &&
+        typeof img === 'string' &&
+        img.trim() !== '' &&
+        !img.includes('placeholder'),
+    ) || '';
+  }
+  if (!onlineUrl && product.image) {
+    onlineUrl = product.image;
+  }
+
   if (
     onlineUrl &&
     typeof onlineUrl === 'string' &&
@@ -29,7 +43,9 @@ export const getProductImageSource = (
       onlineUrl.startsWith('https://') ||
       onlineUrl.startsWith('data:'))
   ) {
-    return { uri: onlineUrl };
+    // 🔒 iOS ATS 및 모바일 보안을 위해 http:// -> https:// 강제 전환
+    const secureUrl = onlineUrl.replace(/^http:\/\//i, 'https://');
+    return { uri: encodeURI(secureUrl) };
   }
 
   const catKey = product.category?.toLowerCase() || '';

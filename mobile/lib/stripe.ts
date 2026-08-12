@@ -1,1 +1,1 @@
-export * from './stripe.web';
+export * from './stripe.native';

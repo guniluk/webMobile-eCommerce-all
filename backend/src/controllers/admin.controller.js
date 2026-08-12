@@ -37,15 +37,9 @@ const processImageUploads = async (req) => {
       images = [images];
     }
     const bodyPromises = images.map(async (img) => {
-      // 이미 내 Cloudinary 계정(CLOUDINARY_CLOUD_NAME)에 업로드된 이미지 URL인 경우 재업로드 방지
-      const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-      if (
-        typeof img === "string" &&
-        img.includes("cloudinary.com") &&
-        cloudName &&
-        img.includes(cloudName)
-      ) {
-        return img;
+      // 이미 Cloudinary(res.cloudinary.com)에 업로드되어 있거나 유효한 웹 이미지인 경우 HTTPS로 변환하여 재업로드 없이 바로 사용
+      if (typeof img === "string" && img.includes("cloudinary.com")) {
+        return img.replace(/^http:\/\//i, "https://");
       }
       try {
         const result = await cloudinary.uploader.upload(img, {

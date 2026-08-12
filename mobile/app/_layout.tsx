@@ -14,6 +14,15 @@ import { StripeProvider } from '../lib/stripe';
 
 WebBrowser.maybeCompleteAuthSession();
 
+const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN || '';
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    tracesSampleRate: 1.0,
+    enableAutoSessionTracking: true,
+  });
+}
+
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || '';
 const stripePublishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 

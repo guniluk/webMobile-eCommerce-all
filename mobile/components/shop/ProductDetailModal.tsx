@@ -52,26 +52,25 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     }
   }, [product]);
 
-  // ⭐ 실시간 리뷰 기반 동적 평점 및 총 리뷰 수 산출 (fallback: product.averageRating / product.totalReviews)
-  const { effectiveAvgRating, effectiveTotalReviews } = useMemo(() => {
-    if (!product) return { effectiveAvgRating: 0, effectiveTotalReviews: 0 };
-
+  // ⭐ DB 저장 실제 데이터(averageRating, totalReviews) 기준 단일화 (ProductCard와 100% 데이터 일치화)
+  const avgRating = useMemo(() => {
+    if (!product) return 0;
+    const dbAvg = product.averageRating ?? product.rating;
+    if (typeof dbAvg === 'number' && dbAvg > 0) return dbAvg;
     if (Array.isArray(reviews) && reviews.length > 0) {
       const sum = reviews.reduce((acc, r) => acc + (Number(r.rating) || 0), 0);
-      const avg = sum / reviews.length;
-      return {
-        effectiveAvgRating: Math.round(avg * 10) / 10,
-        effectiveTotalReviews: reviews.length,
-      };
+      return Math.round((sum / reviews.length) * 10) / 10;
     }
+    return 0;
+  }, [product, reviews]);
 
-    const fallbackTotal = product.totalReviews || product.numReviews || 0;
-    const fallbackAvg = product.averageRating || product.rating || 0;
-    return {
-      effectiveAvgRating: fallbackAvg,
-      effectiveTotalReviews: fallbackTotal,
-    };
-  }, [reviews, product]);
+  const totalReviews = useMemo(() => {
+    if (!product) return 0;
+    const dbTotal = product.totalReviews ?? product.numReviews;
+    if (typeof dbTotal === 'number' && dbTotal > 0) return dbTotal;
+    if (Array.isArray(reviews)) return reviews.length;
+    return 0;
+  }, [product, reviews]);
 
   // 🖼️ 슬라이드 이미지 목록 구성
   const imageList = useMemo(() => {
@@ -93,9 +92,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   }, [product]);
 
   if (!product) return null;
-
-  const totalReviews = effectiveTotalReviews;
-  const avgRating = effectiveAvgRating;
   
   // 📦 재고 수량 계산 및 수량 한도 보정
   const rawStock = product.stock ?? product.stockQuantity;

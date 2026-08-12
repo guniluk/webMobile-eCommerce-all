@@ -26,11 +26,20 @@ export type {
 };
 
 // ----------------- Base URL Resolver -----------------
+export const PROD_API_URL = 'https://webmobile-ecommerce-all.onrender.com';
+
 export const getBaseUrl = (): string => {
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
+  // 1. 프로덕션 Render 서버 사용 여부 토글 (env: EXPO_PUBLIC_USE_PRODUCTION_API=true)
+  if (process.env.EXPO_PUBLIC_USE_PRODUCTION_API === 'true') {
+    return PROD_API_URL;
   }
 
+  // 2. 명시적 API URL 지정 시 사용
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL.replace(/\/$/, '').replace(/\/api$/, '');
+  }
+
+  // 3. Expo Go 개발 모드 hostUri 기반 자동 로컬 IP 호스트 추론
   const hostUri =
     Constants.expoConfig?.hostUri ||
     Constants.manifest2?.extra?.expoGo?.debuggerHost;
@@ -40,6 +49,7 @@ export const getBaseUrl = (): string => {
     return `http://${host}:3000`;
   }
 
+  // 4. 로컬 환경 Fallback (Android 에뮬레이터 vs iOS 시뮬레이터 / Web)
   return Platform.OS === 'android'
     ? 'http://10.0.2.2:3000'
     : 'http://localhost:3000';

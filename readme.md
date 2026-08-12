@@ -19,6 +19,7 @@ Node.js Express 백엔드, Cloud DB(MongoDB), Stripe 결제 게이트웨이, Cle
 ## 🛠 2. 기술 스택 (Tech Stack)
 
 ### 🟢 Backend
+
 - **Runtime**: Node.js (ES Modules)
 - **Framework**: Express.js
 - **Database**: MongoDB & Mongoose ODM
@@ -27,6 +28,7 @@ Node.js Express 백엔드, Cloud DB(MongoDB), Stripe 결제 게이트웨이, Cle
 - **Background Tasks**: Inngest
 
 ### 📱 Mobile (Frontend)
+
 - **Framework**: Expo (React Native, File-based Router)
 - **Styling**: NativeWind (Tailwind CSS for React Native)
 - **State & Query**: Zustand + AsyncStorage, @tanstack/react-query
@@ -34,6 +36,7 @@ Node.js Express 백엔드, Cloud DB(MongoDB), Stripe 결제 게이트웨이, Cle
 - **Authentication**: `@clerk/clerk-expo`
 
 ### 💻 Web (Frontend)
+
 - **Framework**: React (Vite)
 - **Router**: React Router
 - **Styling**: Tailwind CSS
@@ -73,6 +76,7 @@ webMobile-eCommerce-all/
 > **⚠️ 주의**: 보안을 위해 실제 API Key 및 데이터베이스 암호는 `.env` 파일에만 보관하고 Git에 커밋하지 않습니다.
 
 ### 백엔드 환경 변수 (`backend/.env.example`)
+
 ```env
 PORT=3000
 NODE_ENV=development
@@ -90,6 +94,7 @@ STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
 ```
 
 ### 모바일 환경 변수 (`mobile/.env.example`)
+
 ```env
 EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_your_clerk_publishable_key
 EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
@@ -105,16 +110,18 @@ EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
 본 프로젝트는 **1) Stripe Webhook을 통한 비동기 수신 방법**과 **2) Expo Go 및 모바일/웹 개발 환경에서 웹훅 없이 100% 동일한 기능을 구현한 직통 결제 파이프라인**을 모두 상세히 지원합니다.
 
 #### 📡 A. Stripe Webhook 공식 사용 방법
-* **개념**: 카드 결제가 성공(`payment_intent.succeeded`)했을 때 Stripe 서버가 개발자의 백엔드 엔드포인트(`POST /api/payment/webhook`)로 비동기 콜백을 전달하여 주문을 자동 생성합니다.
-* **대시보드 등록**: [Stripe Dashboard](https://dashboard.stripe.com/) ➔ Developers ➔ Webhooks ➔ URL (`https://your-domain.com/api/payment/webhook`) 등록 후 발급받은 Signing secret (`whsec_...`)을 `STRIPE_WEBHOOK_SECRET`에 입력합니다.
-* **로컬 CLI 테스트**:
+
+- **개념**: 카드 결제가 성공(`payment_intent.succeeded`)했을 때 Stripe 서버가 개발자의 백엔드 엔드포인트(`POST /api/payment/webhook`)로 비동기 콜백을 전달하여 주문을 자동 생성합니다.
+- **대시보드 등록**: [Stripe Dashboard](https://dashboard.stripe.com/) ➔ Developers ➔ Webhooks ➔ URL (`https://your-domain.com/api/payment/webhook`) 등록 후 발급받은 Signing secret (`whsec_...`)을 `STRIPE_WEBHOOK_SECRET`에 입력합니다.
+- **로컬 CLI 테스트**:
   ```bash
   stripe listen --forward-to localhost:3000/api/payment/webhook
   ```
 
 #### 🚀 B. 웹훅 없이 100% 동일한 비즈니스 로직을 구현한 직통 결제 아키텍처 (프로젝트 적용)
-* **도입 이유**: Expo Go 앱이나 로컬 개발/웹 환경에서는 포워딩 주소 미설정 또는 비동기 콜백 수신 시점과의 타이밍 문제로 결제가 누락되는 위험이 존재합니다.
-* **직통 파이프라인 (Direct Client-Server Payment & Order Pipeline)**:
+
+- **도입 이유**: Expo Go 앱이나 로컬 개발/웹 환경에서는 포워딩 주소 미설정 또는 비동기 콜백 수신 시점과의 타이밍 문제로 결제가 누락되는 위험이 존재합니다.
+- **직통 파이프라인 (Direct Client-Server Payment & Order Pipeline)**:
   1. **PaymentIntent 생성 (`/api/payment/create-intent`)**: 클라이언트가 장바구니 상품 및 배송지 정보로 Stripe `clientSecret`과 `paymentIntentId`를 발급받음.
   2. **PaymentSheet 결제 승인**: 모바일 네이티브 PaymentSheet 또는 Web 결제창에서 카드 결제 승인 완료.
   3. **직통 주문 생성 (`POST /api/orders`)**: 결제 성공 직후 앱이 Stripe 결제 결과(`paymentResult.id`)를 백엔드로 발송.
@@ -126,11 +133,13 @@ EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
      - **🔔 실시간 알림 발송**: `createOrderNotification`으로 1대1 주문 접수 알림 DB 기록.
 
 ### 🔔 5.2 1대1 Order-Notification DB 시스템
+
 - 하나의 주문(`orderId`)에 정확히 하나의 알림 문서만 연결되도록 Mongoose 스키마에 `unique: true, sparse: true` 인덱스를 적용했습니다.
 - 주문 생성(`created`) 및 배송 상태 변경(`shipped`, `delivered`, `cancelled`) 시 `findOneAndUpdate`와 Mongoose v9 최신 옵션인 `{ returnDocument: 'after' }`를 활용하여 알림을 업데이트하고 `isRead: false`로 동기화합니다.
 - 모바일에서 알림 확인 시 DB `isRead`가 `true`로 저장되어 앱 재접속 시에도 읽음 상태가 유지됩니다.
 
 ### 🛡️ 5.3 멱등성(Idempotency) 및 N+1 쿼리 최적화
+
 - **중복 결제/주문 방지**: 동일한 Stripe `paymentIntentId`로 중복 주문 생성이 요청되더라도 DB에 이중 등록되지 않도록 멱등성 가드를 구축했습니다.
 - **배치 DB 조회 (Batch Read)**: N+1 DB 쿼리를 제거하여 `Product.find({ _id: { $in: productIds } })`로 일괄 처리, 네트워크 I/O 성능을 극대화했습니다.
 
@@ -139,6 +148,7 @@ EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
 ## 🏃‍♂️ 6. 실행 방법 (Getting Started)
 
 ### 1) 백엔드 서버 실행
+
 ```bash
 cd backend
 npm install
@@ -146,6 +156,7 @@ npm run dev
 ```
 
 ### 2) 모바일 앱 실행 (Expo)
+
 ```bash
 cd mobile
 npm install

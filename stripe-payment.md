@@ -47,8 +47,8 @@ npm install stripe
 ```env
 PORT=3000
 MONGODB_URI=mongodb+srv://...
-STRIPE_PUBLISHABLE_KEY=pk_test_51U35...
-STRIPE_SECRET_KEY=sk_test_51U35...
+STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
 ```
 
 ### 2.2 Payment Controller 최적화 코드 (`backend/src/controllers/payment.controller.js`)

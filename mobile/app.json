@@ -51,8 +51,13 @@
           "organization": "byhcoding"
         }
       ],
-      "@sentry/react-native",
-      "@stripe/stripe-react-native"
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.mobile.app",
+          "enableGooglePay": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

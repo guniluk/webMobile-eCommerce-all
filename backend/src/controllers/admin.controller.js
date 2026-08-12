@@ -2,6 +2,7 @@ import cloudinary from "../config/cloudinary.js";
 import { Product } from "../models/product.model.js";
 import { Order } from "../models/order.model.js";
 import { User } from "../models/user.model.js";
+import { createOrderNotification } from "../utils/notification.js";
 
 /**
  * req.files (Multer 폼데이터 파일 업로드) 및 req.body.images (JSON Base64/URL)에서
@@ -124,7 +125,7 @@ export const getAllProducts = async (req, res) => {
       ];
     }
 
-    const products = await Product.find(query).sort({ createdAt: -1 });
+    const products = await Product.find(query).sort({ createdAt: -1 }).lean();
     return res.status(200).json(products);
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -205,8 +206,9 @@ export const getAllOrders = async (_, res) => {
   try {
     const orders = await Order.find()
       .populate("userId", "name email")
-      .populate("orderItems.productId")
-      .sort({ createdAt: -1 });
+      .populate("orderItems.productId", "name price image")
+      .sort({ createdAt: -1 })
+      .lean();
     return res.status(200).json({ orders });
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -218,24 +220,61 @@ export const updateOrderStatus = async (req, res) => {
     const { orderId } = req.params;
     const { status } = req.body;
 
-    if (!status || !["pending", "shipped", "delivered"].includes(status)) {
-      return res.status(400).json({ message: "Invalid status" });
+    const validStatuses = [
+      "pending",
+      "processing",
+      "paid",
+      "shipped",
+      "delivered",
+      "cancelled",
+    ];
+
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({
+        message: `유효하지 않은 상태입니다. (${validStatuses.join(", ")})`,
+      });
     }
 
     const order = await Order.findById(orderId);
     if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({ message: "주문 건을 찾을 수 없습니다." });
     }
 
-    if (status) order.status = status;
-    if (status === "shipped" && !order.shippedAt) order.shippedAt = Date.now();
-    if (status === "delivered" && !order.deliveredAt)
-      order.deliveredAt = Date.now();
+    order.status = status;
+
+    if (["paid", "processing", "shipped", "delivered"].includes(status)) {
+      order.isPaid = true;
+      if (!order.paidAt) order.paidAt = Date.now();
+    }
+
+    if (status === "shipped") {
+      order.isShipped = true;
+      if (!order.shippedAt) order.shippedAt = Date.now();
+    }
+
+    if (status === "delivered") {
+      order.isShipped = true;
+      order.isDelivered = true;
+      if (!order.shippedAt) order.shippedAt = Date.now();
+      if (!order.deliveredAt) order.deliveredAt = Date.now();
+    }
 
     await order.save();
-    return res
-      .status(200)
-      .json({ message: "Order status updated successfully", order });
+
+    // 🔔 관리자의 주문 상태 변경 알림 DB 자동 연동
+    await createOrderNotification({
+      userId: order.userId,
+      orderId: order._id,
+      status,
+      orderItems: order.orderItems,
+      totalPrice: order.totalPrice,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "주문 배송 상태가 성공적으로 변경되었습니다.",
+      order,
+    });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
@@ -245,8 +284,9 @@ export const getAllCustomers = async (_, res) => {
   try {
     const customers = await User.find()
       .select("name email imageUrl addresses wishList createdAt")
-      .populate("wishList")
-      .sort({ createdAt: -1 });
+      .populate("wishList", "name price image category")
+      .sort({ createdAt: -1 })
+      .lean();
     return res.status(200).json({ customers });
   } catch (error) {
     return res.status(500).json({ error: error.message });

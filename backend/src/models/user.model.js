@@ -72,6 +72,10 @@ const userSchema = new mongoose.Schema(
         ref: "Product",
       },
     ],
+    stripeCustomerId: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true },
 );

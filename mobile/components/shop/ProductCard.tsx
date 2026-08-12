@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, Image, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Product } from '../../types';
 import { getProductImageSource } from '../../lib/productUtils';
@@ -23,6 +23,9 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(function Produ
   onOpenReviews,
   onImageError,
 }) {
+  const avgRating = product.averageRating ?? product.rating ?? 0;
+  const totalReviews = product.totalReviews ?? product.numReviews ?? 0;
+
   return (
     <TouchableOpacity
       activeOpacity={0.9}
@@ -81,7 +84,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(function Produ
           </Text>
         </View>
 
-        {/* 💬 리뷰 보기 버튼 */}
+        {/* 💬 리뷰 보기 및 DB 연동 평점/개수 영역 */}
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={(e) => {
@@ -99,10 +102,10 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(function Produ
           <View className="flex-row items-center">
             <Ionicons name="star" size={12} color="#f59e0b" />
             <Text className="text-[11px] font-bold text-slate-700 dark:text-slate-300 ml-0.5">
-              {product.rating ? product.rating.toFixed(1) : '4.5'}
+              {totalReviews > 0 ? avgRating.toFixed(1) : '0.0'}
             </Text>
             <Text className="text-[10px] text-slate-400 dark:text-slate-500 ml-0.5">
-              ({product.numReviews || 0})
+              ({totalReviews})
             </Text>
           </View>
         </TouchableOpacity>

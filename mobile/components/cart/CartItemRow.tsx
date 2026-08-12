@@ -7,7 +7,7 @@ import { getProductImageSource } from '../../lib/productUtils';
 interface CartItemRowProps {
   item: CartItem;
   failedImages: Record<string, boolean>;
-  onUpdateQuantity: (productId: string, quantity: number) => void;
+  onUpdateQuantity: (productId: string, quantity: number, productName?: string) => void;
   onDeleteItem: (productId: string) => void;
   onImageError: (productId: string) => void;
 }
@@ -66,7 +66,7 @@ export const CartItemRow: React.FC<CartItemRowProps> = React.memo(function CartI
         <View className="flex-row justify-between items-center mt-1">
           <View className="flex-row items-center dark:bg-slate-700 bg-slate-100 rounded-lg px-1.5 py-1">
             <TouchableOpacity
-              onPress={() => onUpdateQuantity(productId, item.quantity - 1)}
+              onPress={() => onUpdateQuantity(productId, item.quantity - 1, product.name)}
               activeOpacity={0.6}
               className="p-1"
             >

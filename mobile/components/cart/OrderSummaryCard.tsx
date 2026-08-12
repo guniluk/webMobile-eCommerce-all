@@ -3,38 +3,71 @@ import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface OrderSummaryCardProps {
-  totalAmount: number;
+  subtotal: number;
   loading: boolean;
   onCheckout: () => void;
 }
 
 export const OrderSummaryCard: React.FC<OrderSummaryCardProps> = React.memo(function OrderSummaryCard({
-  totalAmount,
+  subtotal,
   loading,
   onCheckout,
 }) {
+  const shippingFee = subtotal > 0 && subtotal < 100000 ? 3000 : 0;
+  const tax = Math.round(subtotal * 0.10);
+  const finalTotal = subtotal + shippingFee + tax;
+  const isFreeShipping = subtotal >= 100000;
+
   return (
     <View>
       {/* 결제 요약 카드 */}
       <View className="dark:bg-slate-800 bg-white rounded-2xl p-5 border dark:border-slate-700 border-slate-200 shadow-md mb-6">
         <Text className="text-base font-bold dark:text-white text-slate-900 mb-3">
-          결제 금액 요약
+          결제 금액 요약 💳
         </Text>
+
+        {/* 상품 금액 (소계) */}
         <View className="flex-row justify-between mb-2">
           <Text className="text-xs dark:text-slate-400 text-slate-600">상품 금액</Text>
           <Text className="text-xs dark:text-slate-200 text-slate-800 font-semibold">
-            ₩{totalAmount.toLocaleString()}
+            ₩{subtotal.toLocaleString()}
           </Text>
         </View>
-        <View className="flex-row justify-between mb-3">
+
+        {/* 배송비 */}
+        <View className="flex-row justify-between mb-2">
           <Text className="text-xs dark:text-slate-400 text-slate-600">배송비</Text>
-          <Text className="text-xs dark:text-emerald-400 text-emerald-600 font-bold">무료</Text>
+          {isFreeShipping ? (
+            <Text className="text-xs dark:text-emerald-400 text-emerald-600 font-bold">
+              무료 🎉
+            </Text>
+          ) : (
+            <Text className="text-xs dark:text-slate-200 text-slate-800 font-semibold">
+              +₩{shippingFee.toLocaleString()}
+            </Text>
+          )}
         </View>
+
+        {/* 세금 (10%) */}
+        <View className="flex-row justify-between mb-3">
+          <View className="flex-row items-center">
+            <Text className="text-xs dark:text-slate-400 text-slate-600">부가가치세</Text>
+            <Text className="text-[10px] text-slate-400 dark:text-slate-500 ml-1">
+              (10%)
+            </Text>
+          </View>
+          <Text className="text-xs dark:text-slate-200 text-slate-800 font-semibold">
+            +₩{tax.toLocaleString()}
+          </Text>
+        </View>
+
         <View className="h-[1px] dark:bg-slate-700 bg-slate-200 my-2" />
+
+        {/* 최종 결제 금액 */}
         <View className="flex-row justify-between items-center mt-1">
           <Text className="text-sm font-bold dark:text-white text-slate-900">최종 결제 금액</Text>
           <Text className="text-lg font-extrabold dark:text-cyan-400 text-sky-700">
-            ₩{totalAmount.toLocaleString()}
+            ₩{finalTotal.toLocaleString()}
           </Text>
         </View>
       </View>
@@ -51,7 +84,7 @@ export const OrderSummaryCard: React.FC<OrderSummaryCardProps> = React.memo(func
           <>
             <Ionicons name="card-outline" size={20} color="white" />
             <Text className="text-base font-bold text-white ml-2">
-              ₩{totalAmount.toLocaleString()} 주문하기
+              ₩{finalTotal.toLocaleString()} 주문하기
             </Text>
           </>
         )}

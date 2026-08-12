@@ -1,4 +1,3 @@
-import React from "react";
 import { Bell, BellOff, X, CheckCheck, CreditCard, Truck, Package, Info } from "lucide-react";
 
 const NotificationModal = ({

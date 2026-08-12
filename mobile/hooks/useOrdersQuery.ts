@@ -13,6 +13,8 @@ export const useOrdersQuery = () => {
       return api.getUserOrders(token);
     },
     enabled: isLoaded,
+    staleTime: 0, // 즉시 갱신 반영을 위해 0으로 설정
+    refetchOnWindowFocus: true,
   });
 };
 

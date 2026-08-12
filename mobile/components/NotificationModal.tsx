@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   TouchableWithoutFeedback,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppNotification } from '../types';
@@ -17,6 +18,8 @@ interface NotificationModalProps {
   onClose: () => void;
   onMarkAsRead: (id: string) => void;
   onMarkAllAsRead: () => void;
+  onClearAllNotifications?: () => void;
+  onDeleteNotification?: (id: string) => void;
 }
 
 export const NotificationModal: React.FC<NotificationModalProps> = React.memo(
@@ -27,6 +30,8 @@ export const NotificationModal: React.FC<NotificationModalProps> = React.memo(
     onClose,
     onMarkAsRead,
     onMarkAllAsRead,
+    onClearAllNotifications,
+    onDeleteNotification,
   }) {
     const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -97,19 +102,45 @@ export const NotificationModal: React.FC<NotificationModalProps> = React.memo(
                 ) : (
                   /* 알림 목록이 있는 상태 */
                   <View className="flex-1">
-                    {unreadCount > 0 && (
-                      <View className="flex-row justify-end mb-2">
+                    <View className="flex-row justify-end items-center gap-1.5 mb-2">
+                      {unreadCount > 0 && (
                         <TouchableOpacity
                           activeOpacity={0.7}
                           onPress={onMarkAllAsRead}
-                          className="px-2.5 py-1 rounded-lg bg-sky-500/10 dark:bg-cyan-400/20"
+                          className="px-2 py-1 rounded-lg bg-sky-500/10 dark:bg-cyan-400/20"
                         >
                           <Text className="text-[11px] font-bold text-sky-600 dark:text-cyan-400">
-                            모두 읽음 처리
+                            모두 읽음
                           </Text>
                         </TouchableOpacity>
-                      </View>
-                    )}
+                      )}
+
+                      {onClearAllNotifications && (
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={() => {
+                            Alert.alert(
+                              '알림 전체 삭제 🗑️',
+                              '모든 알림 메시지를 삭제하시겠습니까?',
+                              [
+                                { text: '취소', style: 'cancel' },
+                                {
+                                  text: '삭제',
+                                  style: 'destructive',
+                                  onPress: onClearAllNotifications,
+                                },
+                              ],
+                            );
+                          }}
+                          className="flex-row items-center px-2 py-1 rounded-lg bg-rose-500/10 dark:bg-rose-500/20"
+                        >
+                          <Ionicons name="trash-outline" size={12} color="#ef4444" />
+                          <Text className="text-[11px] font-bold text-rose-500 ml-1">
+                            전체 삭제
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
 
                     <ScrollView
                       showsVerticalScrollIndicator={false}
@@ -170,9 +201,23 @@ export const NotificationModal: React.FC<NotificationModalProps> = React.memo(
                                       <View className="w-1.5 h-1.5 rounded-full bg-rose-500 ml-1" />
                                     )}
                                   </View>
-                                  <Text className="text-[10px] text-slate-400">
-                                    {noti.createdAt}
-                                  </Text>
+                                   <View className="flex-row items-center">
+                                     <Text className="text-[10px] text-slate-400 mr-1.5">
+                                       {noti.createdAt}
+                                     </Text>
+                                     {onDeleteNotification && (
+                                       <TouchableOpacity
+                                         activeOpacity={0.7}
+                                         onPress={(e) => {
+                                           e.stopPropagation();
+                                           onDeleteNotification(noti.id);
+                                         }}
+                                         className="p-0.5 rounded-full"
+                                       >
+                                         <Ionicons name="close" size={14} color="#94a3b8" />
+                                       </TouchableOpacity>
+                                     )}
+                                   </View>
                                 </View>
 
                                 <Text

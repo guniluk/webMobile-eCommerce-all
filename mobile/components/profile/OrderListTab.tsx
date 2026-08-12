@@ -10,6 +10,53 @@ interface OrderListTabProps {
   onOpenReviewModal: (productId: string, orderId: string, hasReviewed?: boolean) => void;
 }
 
+const getStatusBadgeInfo = (order: Order) => {
+  const status =
+    order.status ||
+    (order.isDelivered
+      ? 'delivered'
+      : order.isShipped
+      ? 'shipped'
+      : order.isPaid
+      ? 'processing'
+      : 'pending');
+
+  switch (status) {
+    case 'delivered':
+      return {
+        label: '배송 완료 📦',
+        bgClass: 'bg-emerald-500/10 border-emerald-500/30',
+        textClass: 'text-emerald-600 dark:text-emerald-400',
+      };
+    case 'shipped':
+      return {
+        label: '배송 중 🚚',
+        bgClass: 'bg-sky-500/10 border-sky-500/30',
+        textClass: 'text-sky-600 dark:text-cyan-400',
+      };
+    case 'processing':
+    case 'paid':
+      return {
+        label: '배송 준비 ⚙️',
+        bgClass: 'bg-indigo-500/10 border-indigo-500/30',
+        textClass: 'text-indigo-600 dark:text-indigo-400',
+      };
+    case 'cancelled':
+      return {
+        label: '주문 취소 ❌',
+        bgClass: 'bg-rose-500/10 border-rose-500/30',
+        textClass: 'text-rose-600 dark:text-rose-400',
+      };
+    case 'pending':
+    default:
+      return {
+        label: '주문 접수 📝',
+        bgClass: 'bg-amber-500/10 border-amber-500/30',
+        textClass: 'text-amber-600 dark:text-amber-400',
+      };
+  }
+};
+
 export const OrderListTab: React.FC<OrderListTabProps> = React.memo(function OrderListTab({
   orders,
   loading,
@@ -49,10 +96,17 @@ export const OrderListTab: React.FC<OrderListTabProps> = React.memo(function Ord
             })
           : '주문일 정보 없음';
 
+        const badgeInfo = getStatusBadgeInfo(order);
+        const isDelivered = order.isDelivered || order.status === 'delivered';
+
         return (
           <View
             key={order._id}
-            className="dark:bg-slate-800 bg-white rounded-2xl p-4 mb-3.5 border dark:border-slate-700 border-slate-200 shadow-sm"
+            className={`rounded-2xl p-4 mb-3.5 border shadow-sm ${
+              isDelivered
+                ? 'bg-slate-200/50 dark:bg-slate-800/60 border-slate-300/60 dark:border-slate-700/80 opacity-90'
+                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+            }`}
           >
             <View className="flex-row justify-between items-center pb-2.5 border-b dark:border-slate-700 border-slate-100 mb-3">
               <View className="flex-row items-center">
@@ -61,9 +115,9 @@ export const OrderListTab: React.FC<OrderListTabProps> = React.memo(function Ord
                   {dateStr}
                 </Text>
               </View>
-              <View className="bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                <Text className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                  {order.isPaid ? '결제완료' : '주문접수'}
+              <View className={`px-2.5 py-0.5 rounded-full border ${badgeInfo.bgClass}`}>
+                <Text className={`text-[10px] font-bold ${badgeInfo.textClass}`}>
+                  {badgeInfo.label}
                 </Text>
               </View>
             </View>
@@ -105,8 +159,8 @@ export const OrderListTab: React.FC<OrderListTabProps> = React.memo(function Ord
                       </Text>
                     </View>
 
-                    {/* 리뷰 작성 버튼 */}
-                    {prodIdStr ? (
+                    {/* 리뷰 작성 버튼 (배송완료 시에만 리뷰쓰기 표출, 미배송 상태 표시는 제거) */}
+                    {prodIdStr && (isDelivered || hasReviewed) ? (
                       <TouchableOpacity
                         activeOpacity={0.7}
                         onPress={() => onOpenReviewModal(prodIdStr, order._id, hasReviewed)}

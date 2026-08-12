@@ -2,6 +2,7 @@ import { Order } from "../models/order.model.js";
 import { Product } from "../models/product.model.js";
 import { Review } from "../models/review.model.js";
 import { Cart } from "../models/cart.model.js";
+import { createOrderNotification } from "../utils/notification.js";
 import mongoose from "mongoose";
 
 export const createOrder = async (req, res) => {
@@ -46,12 +47,37 @@ export const createOrder = async (req, res) => {
       email_address: user.email,
     };
 
-    // 상품 유효성 검사 및 재고 차감
+    // 🛡️ 멱등성 단일 차감 가드: 동일한 paymentResult.id (Stripe PaymentIntent ID)로 이미 주문이 존재하는 경우 중복 차감 및 중복 생성 차단
+    if (finalPaymentResult && finalPaymentResult.id) {
+      const existingOrder = await Order.findOne({
+        "paymentResult.id": finalPaymentResult.id,
+      });
+      if (existingOrder) {
+        if (session) {
+          await session.abortTransaction();
+          session.endSession();
+        }
+        return res.status(200).json({
+          message: "이미 성공적으로 접수된 주문입니다. (이중 차감 방지 됨)",
+          order: existingOrder,
+        });
+      }
+    }
+
+    // N+1 DB 쿼리 최적화: Batch Read
+    const productIds = orderItems.map((item) => item.productId || item.product);
+    const dbProducts = session
+      ? await Product.find({ _id: { $in: productIds } }).session(session)
+      : await Product.find({ _id: { $in: productIds } });
+    const productMap = new Map(dbProducts.map((p) => [p._id.toString(), p]));
+
+    let calculatedSubtotal = 0;
+    const formattedOrderItems = [];
+
+    // 상품 유효성 검사, 단 1회 재고 차감 및 orderItems 포맷팅을 루프에서 처리
     for (const item of orderItems) {
-      const targetProdId = item.productId || item.product;
-      const product = session
-        ? await Product.findById(targetProdId).session(session)
-        : await Product.findById(targetProdId);
+      const targetProdId = (item.productId || item.product)?.toString();
+      const product = productMap.get(targetProdId);
 
       if (!product) {
         if (session) {
@@ -73,32 +99,42 @@ export const createOrder = async (req, res) => {
         });
       }
 
+      // 📦 주문 당 단 1회 재고(stock) 차감 처리
       product.stock -= item.quantity;
       if (session) {
         await product.save({ session });
       } else {
         await product.save();
       }
-    }
 
-    // 포맷 정제된 orderItems & shippingAddress (Mongoose Order Schema 100% 일치)
-    const formattedOrderItems = [];
-    for (const item of orderItems) {
-      const targetProdId = item.productId || item.product;
-      const prodObj = await Product.findById(targetProdId).catch(() => null);
+      const itemPrice = item.price !== undefined ? item.price : product.price;
+      calculatedSubtotal += itemPrice * (item.quantity || 1);
+
       const prodImg =
         item.image ||
-        (prodObj && (prodObj.image || prodObj.images?.[0])) ||
+        product.image ||
+        product.images?.[0] ||
         "https://via.placeholder.com/150";
 
       formattedOrderItems.push({
-        productId: targetProdId,
-        name: item.name || (prodObj ? prodObj.name : "상품"),
+        productId: product._id,
+        name: item.name || product.name,
         quantity: item.quantity || 1,
-        price: item.price !== undefined ? item.price : prodObj ? prodObj.price : 0,
+        price: itemPrice,
         image: prodImg,
       });
     }
+
+    // 서버 측 배송비 및 세금 일관성 산정 (10만원 이상 무료배송, 10만원 미만 고정 3,000원)
+    const calculatedShippingFee = calculatedSubtotal >= 100000 ? 0 : 3000;
+    const calculatedTaxAmount = Math.round(calculatedSubtotal * 0.1);
+    const calculatedTotalPrice = Math.round(
+      calculatedSubtotal + calculatedShippingFee + calculatedTaxAmount,
+    );
+
+    // 클라이언트 전달 totalPrice가 있는 경우 우선하되, 0 이하인 경우 서버 계산 총액 사용
+    const finalTotalPrice =
+      totalPrice !== undefined && totalPrice > 0 ? totalPrice : calculatedTotalPrice;
 
     const formattedShippingAddress = {
       fullName: shippingAddress.fullName || "홍길동",
@@ -120,7 +156,10 @@ export const createOrder = async (req, res) => {
             orderItems: formattedOrderItems,
             shippingAddress: formattedShippingAddress,
             paymentResult: finalPaymentResult,
-            totalPrice,
+            subtotal: calculatedSubtotal,
+            shippingFee: calculatedShippingFee,
+            taxAmount: calculatedTaxAmount,
+            totalPrice: finalTotalPrice,
           },
         ],
         { session },
@@ -142,11 +181,23 @@ export const createOrder = async (req, res) => {
         orderItems: formattedOrderItems,
         shippingAddress: formattedShippingAddress,
         paymentResult: finalPaymentResult,
-        totalPrice,
+        subtotal: calculatedSubtotal,
+        shippingFee: calculatedShippingFee,
+        taxAmount: calculatedTaxAmount,
+        totalPrice: finalTotalPrice,
       });
 
       await Cart.findOneAndUpdate({ userId: user._id }, { items: [] });
     }
+
+    // 🔔 DB 알림 자동 연동 (주문 접수 완료)
+    await createOrderNotification({
+      userId: user._id,
+      orderId: order._id,
+      status: "created",
+      orderItems: formattedOrderItems,
+      totalPrice,
+    });
 
     return res
       .status(201)
@@ -163,16 +214,17 @@ export const createOrder = async (req, res) => {
 export const getUserOrders = async (req, res) => {
   try {
     const orders = await Order.find({ userId: req.user._id })
-      .populate("orderItems.productId")
+      .populate("orderItems.productId", "name price image")
       .sort({
         createdAt: -1,
-      });
+      })
+      .lean();
 
     const orderIds = orders.map((order) => order._id);
     const reviews = await Review.find({
       orderId: { $in: orderIds },
       userId: req.user._id,
-    });
+    }).lean();
 
     const reviewedOrderIds = new Set(
       reviews.map((review) => review.orderId.toString()),
@@ -185,8 +237,7 @@ export const getUserOrders = async (req, res) => {
     );
 
     // 주문별 및 상품별 리뷰 작성 여부 매핑
-    const orderWithReviewStatus = orders.map((order) => {
-      const orderObj = order.toObject();
+    const orderWithReviewStatus = orders.map((orderObj) => {
       const orderIdStr = orderObj._id.toString();
 
       const orderItemsWithStatus = (orderObj.orderItems || []).map((item) => {
@@ -215,6 +266,43 @@ export const getUserOrders = async (req, res) => {
     });
 
     return res.status(200).json({ orders: orderWithReviewStatus });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * 주문 상태 변경 및 DB 알림 트리거
+ * PATCH /api/orders/:id/status
+ */
+export const updateOrderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: "주문을 찾을 수 없습니다." });
+    }
+
+    order.status = status;
+    if (status === "delivered") {
+      order.deliveredAt = new Date();
+    } else if (status === "shipped") {
+      order.shippedAt = new Date();
+    }
+    await order.save();
+
+    // 🔔 상태 변경 DB 알림 자동 연동
+    await createOrderNotification({
+      userId: order.userId,
+      orderId: order._id,
+      status,
+      orderItems: order.orderItems,
+      totalPrice: order.totalPrice,
+    });
+
+    return res.status(200).json({ message: "주문 상태가 변경되었습니다.", order });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

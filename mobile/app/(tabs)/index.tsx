@@ -29,7 +29,7 @@ import {
   useWishlistQuery,
   useToggleWishlistMutation,
 } from '../../hooks/useWishlistQuery';
-import { useAddToCartMutation } from '../../hooks/useCartQuery';
+import { useAddToCartMutation, useCartQuery } from '../../hooks/useCartQuery';
 
 // ----------------- ShopHeader Component -----------------
 interface ShopHeaderProps {
@@ -165,8 +165,26 @@ export default function ShopScreen() {
     [wishlist],
   );
 
+  const { data: cartData } = useCartQuery();
+
+  const cartProductIds = useMemo(() => {
+    if (!cartData?.items) return [];
+    return cartData.items.map((item) => {
+      if (typeof item.productId === 'object' && item.productId?._id) {
+        return item.productId._id;
+      }
+      if (typeof item.product === 'object' && item.product?._id) {
+        return item.product._id;
+      }
+      return (item.productId || item.product || '') as string;
+    });
+  }, [cartData]);
+
   const { data: productReviews = [], isLoading: isReviewsLoading } =
     useProductReviewsQuery(reviewsModalProduct?._id);
+
+  const { data: selectedProductReviews = [] } =
+    useProductReviewsQuery(selectedProduct?._id);
 
   const addToCartMutation = useAddToCartMutation();
   const toggleWishlistMutation = useToggleWishlistMutation();
@@ -192,14 +210,14 @@ export default function ShopScreen() {
   }, [refetchProducts, refetchWishlist]);
 
   const handleAddToCart = useCallback(
-    (product: Product) => {
+    (product: Product, quantity: number = 1) => {
       addToCartMutation.mutate(
-        { productId: product._id, quantity: 1 },
+        { productId: product._id, quantity },
         {
           onSuccess: () => {
             Alert.alert(
               '장바구니 담기 성공 🎉',
-              `${product.name} 상품이 장바구니에 담겼습니다.`,
+              `${product.name} 상품(${quantity}개)이 장바구니에 담겼습니다.`,
             );
           },
           onError: (err: any) => {
@@ -340,6 +358,10 @@ export default function ShopScreen() {
         isWished={
           selectedProduct ? wishlistIds.includes(selectedProduct._id) : false
         }
+        isInCart={
+          selectedProduct ? cartProductIds.includes(selectedProduct._id) : false
+        }
+        reviews={selectedProductReviews}
         failedImages={failedImages}
         onClose={() => setSelectedProduct(null)}
         onToggleWishlist={handleToggleWishlist}

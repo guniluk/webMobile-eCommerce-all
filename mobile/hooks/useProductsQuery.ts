@@ -13,6 +13,8 @@ export const useProductsQuery = (category?: string, search?: string) => {
       return api.getProducts(category, search, token);
     },
     enabled: isLoaded,
+    staleTime: 1000 * 60 * 5, // 5분 캐싱으로 네트워크 부하 절감
+    gcTime: 1000 * 60 * 10,
   });
 };
 
@@ -24,5 +26,6 @@ export const useProductReviewsQuery = (productId?: string | null) => {
       return api.getProductReviews(productId);
     },
     enabled: !!productId,
+    staleTime: 1000 * 60 * 2, // 2분 캐싱
   });
 };

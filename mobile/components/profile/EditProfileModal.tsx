@@ -77,6 +77,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = React.memo(
           onChangeImageUrl(selectedUri);
         }
       } catch (err: any) {
+        console.error('이미지 선택 에러:', err);
         Alert.alert('오류', '이미지를 불러오는 중 문제가 발생했습니다.');
       }
     };

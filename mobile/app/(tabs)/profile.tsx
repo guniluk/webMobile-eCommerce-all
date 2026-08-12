@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser, useAuth } from '@clerk/clerk-expo';
 import { useColorScheme } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { Header } from '../../components/Header';
 import { api } from '../../lib/api';
 
@@ -18,11 +19,13 @@ import { UserProfileCard } from '../../components/profile/UserProfileCard';
 import { OrderListTab } from '../../components/profile/OrderListTab';
 import { WishlistTab } from '../../components/profile/WishlistTab';
 import { AddressListTab } from '../../components/profile/AddressListTab';
-import { NotificationTab } from '../../components/profile/NotificationTab';
 import { AddAddressModal } from '../../components/profile/AddAddressModal';
 import { CreateReviewModal } from '../../components/profile/CreateReviewModal';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { useOrdersQuery } from '../../hooks/useOrdersQuery';
+import { useNotificationsQuery } from '../../hooks/useNotificationsQuery';
+import { useNotificationStore } from '../../store/useNotificationStore';
 import { useWishlistQuery, useDeleteWishlistMutation } from '../../hooks/useWishlistQuery';
 import {
   useAddressesQuery,
@@ -35,13 +38,29 @@ import { useAddToCartMutation, useCartQuery } from '../../hooks/useCartQuery';
 import { Product, AppNotification, Address } from '../../types';
 
 export default function ProfileScreen() {
+  const queryClient = useQueryClient();
   const { user } = useUser();
   const { getToken, signOut } = useAuth();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'wishlist' | 'addresses' | 'notifications'>('orders');
-  const [readNotiIds, setReadNotiIds] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<'orders' | 'wishlist' | 'addresses'>('orders');
+  
+  const {
+    readNotiIds,
+    clearedNotiIds,
+    markAsRead,
+    markAllAsRead,
+    getNotificationsFromOrders,
+  } = useNotificationStore();
+
+  const {
+    notifications: dbNotifications,
+    unreadCount: dbUnreadCount,
+    isFetched: isNotiFetched,
+    markAllAsRead: markAllDbAsRead,
+    refetch: refetchNotifications,
+  } = useNotificationsQuery();
 
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
@@ -118,85 +137,66 @@ export default function ProfileScreen() {
     }
   }, [user, getToken]);
 
+  // 🔔 백엔드 DB의 isRead === true 알림들을 로컬 readNotiIds에 동기화
+  useEffect(() => {
+    if (dbNotifications && dbNotifications.length > 0) {
+      dbNotifications.forEach((noti) => {
+        if (noti.isRead) {
+          if (noti.orderId) {
+            const notiId = `noti-${noti.orderId}`;
+            markAsRead(notiId);
+          }
+          if (noti._id) {
+            markAsRead(noti._id);
+          }
+        }
+      });
+    }
+  }, [dbNotifications, markAsRead]);
+
   const generatedNotifications = useMemo<AppNotification[]>(() => {
-    if (!orders || orders.length === 0) return [];
-    const notis: AppNotification[] = [];
+    return getNotificationsFromOrders(orders);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders, getNotificationsFromOrders, readNotiIds, clearedNotiIds]);
 
-    orders.forEach((ord) => {
-      const prodName =
-        (ord.orderItems?.[0]?.name) ||
-        (typeof ord.orderItems?.[0]?.product === 'object' ? ord.orderItems[0].product?.name : '') ||
-        '주문 상품';
-      const extraCount = (ord.orderItems?.length || 1) - 1;
-      const prodSummary = extraCount > 0 ? `${prodName} 외 ${extraCount}건` : prodName;
-      const dateStr = ord.createdAt
-        ? new Date(ord.createdAt).toLocaleDateString('ko-KR', {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          })
-        : '최근';
+  // 🔴 DB 알림 조회가 완료되면 DB의 unreadCount를 절대적 기준으로 적용 (0일 시 0으로 완벽 보장)
+  const unreadNotiCount = useMemo(() => {
+    if (isNotiFetched) {
+      return dbUnreadCount;
+    }
+    return generatedNotifications.filter((n) => !n.read).length;
+  }, [isNotiFetched, dbUnreadCount, generatedNotifications]);
 
-      if (ord.isDelivered || ord.status === 'delivered') {
-        notis.push({
-          id: `noti-delivered-${ord._id}`,
-          orderId: ord._id,
-          title: '배송 완료',
-          message: `주문하신 [${prodSummary}] 상품이 성공적으로 배송 완료되었습니다. 리뷰를 남겨보세요!`,
-          type: 'delivery',
-          statusBadge: '배송완료',
-          read: readNotiIds.includes(`noti-delivered-${ord._id}`),
-          createdAt: dateStr,
-          orderProductNames: prodSummary,
-        });
-      }
+  const handleSelectOrdersTab = useCallback(() => {
+    setActiveTab('orders');
+    markAllDbAsRead();
+    if (generatedNotifications.length > 0) {
+      markAllAsRead(generatedNotifications);
+    }
+  }, [generatedNotifications, markAllAsRead, markAllDbAsRead]);
 
-      if (ord.isPaid) {
-        notis.push({
-          id: `noti-paid-${ord._id}`,
-          orderId: ord._id,
-          title: ord.status === 'shipped' ? '배송 시작' : '결제 완료',
-          message:
-            ord.status === 'shipped'
-              ? `[${prodSummary}] 상품이 출발하여 배송 중입니다.`
-              : `[${prodSummary}] 결제가 확인되어 배송을 준비 중입니다.`,
-          type: ord.status === 'shipped' ? 'delivery' : 'payment',
-          statusBadge: ord.status === 'shipped' ? '배송중' : '결제완료',
-          read: readNotiIds.includes(`noti-paid-${ord._id}`),
-          createdAt: dateStr,
-          orderProductNames: prodSummary,
-        });
-      }
-    });
-
-    return notis;
-  }, [orders, readNotiIds]);
-
-  const unreadNotiCount = useMemo(
-    () => generatedNotifications.filter((n) => !n.read).length,
-    [generatedNotifications],
+  // 🔄 모바일에서 스크린 이동(포커스) 시 최신 DB 주문 및 알림 상태 즉시 Invalidate & Refetch
+  useFocusEffect(
+    useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      refetchOrders();
+      refetchNotifications();
+    }, [queryClient, refetchOrders, refetchNotifications])
   );
-
-  const handleMarkAsRead = useCallback((id: string) => {
-    setReadNotiIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-  }, []);
-
-  const handleMarkAllAsRead = useCallback(() => {
-    const allIds = generatedNotifications.map((n) => n.id);
-    setReadNotiIds(allIds);
-  }, [generatedNotifications]);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await Promise.all([refetchOrders(), refetchWishlist(), refetchAddresses()]);
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      await Promise.all([refetchOrders(), refetchWishlist(), refetchAddresses(), refetchNotifications()]);
     } finally {
       setIsRefreshing(false);
     }
-  }, [refetchOrders, refetchWishlist, refetchAddresses]);
+  }, [queryClient, refetchOrders, refetchWishlist, refetchAddresses, refetchNotifications]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -341,23 +341,41 @@ export default function ProfileScreen() {
   };
 
   const handleDeleteAddress = (addressId: string) => {
-    Alert.alert('배송지 삭제', '이 배송지를 정말 삭제하시겠습니까?', [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '삭제',
-        style: 'destructive',
-        onPress: () => {
-          deleteAddressMutation.mutate(addressId, {
-            onSuccess: () => {
-              Alert.alert('삭제 완료', '배송지가 삭제되었습니다.');
-            },
-            onError: () => {
-              Alert.alert('오류', '배송지 삭제 중 오류가 발생했습니다.');
-            },
-          });
+    const targetAddr = addresses.find((a) => a._id === addressId);
+    const isDefault = targetAddr?.isDefault;
+
+    if (isDefault) {
+      Alert.alert(
+        '기본 배송지 삭제 안내 📍',
+        '기본 배송지는 직접 삭제하실 수 없습니다. 다른 배송지를 먼저 기본 배송지로 지정하신 후 삭제해 주세요.',
+      );
+      return;
+    }
+
+    Alert.alert(
+      '배송지 삭제 🗑️',
+      `'${targetAddr?.label || '선택한 배송지'}' 항목을 정말 삭제하시겠습니까?`,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: () => {
+            deleteAddressMutation.mutate(addressId, {
+              onSuccess: () => {
+                Alert.alert('삭제 완료 ✅', '배송지가 성공적으로 삭제되었습니다.');
+              },
+              onError: (err: any) => {
+                Alert.alert(
+                  '삭제 실패 ⚠️',
+                  err?.message || '기본 배송지는 삭제하실 수 없습니다. 다른 배송지를 먼저 기본 배송지로 지정해 주세요.',
+                );
+              },
+            });
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   const openReviewModal = (productId: string, orderId: string) => {
@@ -427,7 +445,7 @@ export default function ProfileScreen() {
             {/* Orders */}
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => setActiveTab('orders')}
+              onPress={handleSelectOrdersTab}
               style={{
                 paddingVertical: 8,
                 paddingHorizontal: 12,
@@ -455,23 +473,10 @@ export default function ProfileScreen() {
               >
                 주문내역
               </Text>
-              <View
-                className={`ml-1.5 px-1.5 py-0.5 rounded-full ${
-                  activeTab === 'orders'
-                    ? 'bg-sky-500/20 dark:bg-cyan-400/20'
-                    : 'bg-slate-200 dark:bg-slate-700'
-                }`}
-              >
-                <Text
-                  style={{
-                    fontSize: 10,
-                    fontWeight: '800',
-                    color: activeTab === 'orders' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#94a3b8' : '#64748b'),
-                  }}
-                >
-                  {orders.length}
-                </Text>
-              </View>
+              {/* 🔴 알림 아이콘/도트 표시 (숫자 없이 알림 존재 유무만 시각화) */}
+              {unreadNotiCount > 0 && (
+                <View className="ml-1.5 w-2.5 h-2.5 rounded-full bg-rose-500 border border-white dark:border-slate-800" />
+              )}
             </TouchableOpacity>
 
             {/* Wishlist */}
@@ -573,60 +578,6 @@ export default function ProfileScreen() {
                 </Text>
               </View>
             </TouchableOpacity>
-
-            {/* Notifications */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setActiveTab('notifications')}
-              style={{
-                paddingVertical: 8,
-                paddingHorizontal: 12,
-                borderRadius: 14,
-                marginRight: 8,
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: activeTab === 'notifications' ? (isDark ? '#334155' : '#ffffff') : (isDark ? '#1e293b' : '#f1f5f9'),
-                borderWidth: 1,
-                borderColor: activeTab === 'notifications' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#334155' : '#e2e8f0'),
-              }}
-            >
-              <Ionicons
-                name="notifications-outline"
-                size={16}
-                color={activeTab === 'notifications' ? (isDark ? '#38bdf8' : '#0284c7') : '#94a3b8'}
-                style={{ marginRight: 5 }}
-              />
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: activeTab === 'notifications' ? '800' : '700',
-                  color: activeTab === 'notifications' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#94a3b8' : '#64748b'),
-                }}
-              >
-                알림
-              </Text>
-              <View
-                className={`ml-1.5 px-1.5 py-0.5 rounded-full ${
-                  unreadNotiCount > 0
-                    ? 'bg-rose-500'
-                    : activeTab === 'notifications'
-                    ? 'bg-sky-500/20 dark:bg-cyan-400/20'
-                    : 'bg-slate-200 dark:bg-slate-700'
-                }`}
-              >
-                <Text
-                  style={{
-                    fontSize: 10,
-                    fontWeight: '800',
-                    color: unreadNotiCount > 0
-                      ? '#ffffff'
-                      : activeTab === 'notifications' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#94a3b8' : '#64748b'),
-                  }}
-                >
-                  {generatedNotifications.length}
-                </Text>
-              </View>
-            </TouchableOpacity>
           </ScrollView>
         </View>
 
@@ -663,15 +614,6 @@ export default function ProfileScreen() {
               onOpenAddModal={openAddressModal}
               onEditAddress={openEditAddressModal}
               onDeleteAddress={handleDeleteAddress}
-            />
-          )}
-
-          {activeTab === 'notifications' && (
-            <NotificationTab
-              notifications={generatedNotifications}
-              loading={isOrdersLoading}
-              onMarkAsRead={handleMarkAsRead}
-              onMarkAllAsRead={handleMarkAllAsRead}
             />
           )}
         </View>

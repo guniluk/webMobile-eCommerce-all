@@ -74,6 +74,21 @@ const orderSchema = new mongoose.Schema(
       id: String,
       status: String,
     },
+    subtotal: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    shippingFee: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    taxAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     totalPrice: {
       type: Number,
       required: true,
@@ -81,7 +96,7 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "shipped", "delivered"],
+      enum: ["pending", "processing", "shipped", "delivered", "cancelled"],
       default: "pending",
     },
     deliveredAt: {
@@ -94,4 +109,5 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-export const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);
+export const Order =
+  mongoose.models.Order || mongoose.model("Order", orderSchema);

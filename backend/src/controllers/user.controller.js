@@ -315,7 +315,7 @@ export const deleteAddress = async (req, res) => {
     if (address.isDefault) {
       return res.status(400).json({
         success: false,
-        message: "기본 배송지는 삭제할 수 없습니다.",
+        message: "기본 배송지는 직접 삭제하실 수 없습니다 📍 다른 배송지를 먼저 기본 배송지로 설정하신 후 삭제해 주세요.",
       });
     }
     user.addresses.pull(addressId);

@@ -196,15 +196,16 @@ export function TestErrorButton() {
 
 ---
 
-## 📱 5. 4단계: Mobile (Expo / React Native) 연동
+## 📱 5. 4단계: Mobile (Expo / React Native) 연동 & 실전 에러 수집 정책
 
+### 1) 패키지 설치
 ```bash
 cd mobile
 npx expo install @sentry/react-native
 ```
 
+### 2) 앱 진입점 초기화 (`mobile/App.js` 또는 Root Layout)
 ```javascript
-// mobile/App.js
 import * as Sentry from '@sentry/react-native';
 
 Sentry.init({
@@ -218,6 +219,80 @@ function App() {
 }
 
 export default Sentry.wrap(App);
+```
+
+---
+
+### 3) 🎯 [실전 정책] 노이즈 방지 에러 필터링 & 결제/장바구니 모니터링 (`mobile/app/(tabs)/cart.tsx`)
+
+> 💡 **핵심 모범 사례**: 사용자가 결제 모달 창에서 **[취소]**를 누르거나 단순 닫기를 한 경우에는 **실제 코드/서버 에러가 아니므로 Sentry로 예외를 전송하지 않고 필터링**하며, **실제 시스템/네트워크/결제 승인 장애 건에 대해서만 선별적으로 `Sentry.captureException`을 전송**합니다.
+
+```typescript
+import * as Sentry from '@sentry/react-native';
+
+// 💳 Stripe 결제 및 주문 생성 핸들러 예시
+const handleCheckout = async () => {
+  // 1. 배송지 미등록 시 (사용자 선택/입력 유도) -> Alert만 표시 후 차단 (Sentry 수집 제외)
+  if (!currentAddress) {
+    Alert.alert("배송지 필요 📍", "주문을 진행하려면 먼저 배송지를 등록해 주세요.");
+    return;
+  }
+
+  try {
+    // 2. Stripe PaymentIntent 생성 요청
+    const intentResult = await api.createPaymentIntent({ cartItems, shippingAddress }, token);
+    if (!intentResult?.clientSecret) {
+      // 결제 세션 미발행 경고 수집
+      Sentry.captureMessage(`PaymentIntent creation failed: ${intentResult?.message || "No clientSecret"}`, "warning");
+      return;
+    }
+
+    // 3. Stripe PaymentSheet 결제창 초기화 실패 (실제 SDK/네트워크 초기화 오류)
+    const { error: initError } = await initPaymentSheet({ ... });
+    if (initError) {
+      Sentry.captureException(initError, { tags: { section: "stripe_init_payment_sheet" } });
+      Alert.alert("결제 초기화 오류 ❌", initError.message);
+      return;
+    }
+
+    // 4. Stripe 결제 모달 표시 및 결과 처리
+    const { error: presentError } = await presentPaymentSheet();
+
+    if (presentError) {
+      if (presentError.code === "Canceled") {
+        // 🛑 [중요] 사용자가 단순 취소한 경우: 코드 에러가 아니므로 Sentry 수집 제외!
+        Alert.alert("안내 ℹ️", "결제가 취소되었습니다.");
+      } else {
+        // 🔥 카드 결제 승인 거절 등 실제 결제 실패 에러만 Sentry에 전송!
+        Sentry.captureException(presentError, { tags: { section: "stripe_present_payment_sheet" } });
+        Alert.alert("결제 실패 ❌", presentError.message);
+      }
+      return;
+    }
+
+    // 5. 결제 성공 후 백엔드 DB 주문 생성 실패 (실제 서버 500/DB 장애)
+    createOrderMutation.mutate(orderData, {
+      onError: (err: any) => {
+        Sentry.captureException(err, {
+          tags: { section: "create_order_after_payment" },
+          extra: { paymentIntentId: intentResult.paymentIntentId },
+        });
+        Alert.alert("주문 생성 실패 ⚠️", "결제는 성공했으나 주문 기록 생성에 실패했습니다.");
+      },
+    });
+
+  } catch (err: any) {
+    // 6. Unhandled 런타임 코드 예외
+    Sentry.captureException(err, { tags: { section: "cart_handle_checkout_catch" } });
+  }
+};
+
+// 🛒 장바구니 항목 수정/삭제 실패 시 Sentry 예외 트래킹
+deleteCartMutation.mutate(productId, {
+  onError: (err: any) => {
+    Sentry.captureException(err, { tags: { section: "delete_cart_item" } });
+  },
+});
 ```
 
 ---

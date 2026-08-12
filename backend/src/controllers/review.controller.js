@@ -160,6 +160,61 @@ export const deleteReview = async (req, res) => {
 };
 
 /**
+ * 리뷰 수정 API
+ */
+export const updateReview = async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const { rating, comment, message } = req.body;
+    const finalComment = comment !== undefined ? comment : message;
+
+    const review = await Review.findById(reviewId);
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: "수정할 리뷰를 찾을 수 없습니다.",
+      });
+    }
+
+    if (review.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "해당 리뷰를 수정할 권한이 없습니다.",
+      });
+    }
+
+    if (rating !== undefined && rating !== null) {
+      const numericRating = Number(rating);
+      if (isNaN(numericRating) || numericRating < 1 || numericRating > 5) {
+        return res.status(400).json({
+          success: false,
+          message: "평점은 1점에서 5점 사이의 숫자여야 합니다.",
+        });
+      }
+      review.rating = numericRating;
+    }
+
+    if (finalComment !== undefined) {
+      review.comment = finalComment;
+    }
+
+    await review.save();
+
+    // 상품 평점 및 리뷰 개수 갱신
+    await updateProductRating(review.productId);
+
+    return res.status(200).json({
+      success: true,
+      message: "리뷰가 성공적으로 수정되었습니다.",
+      review,
+    });
+  } catch (error) {
+    console.error("리뷰 수정 실패:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+/**
  * 특정 상품의 리뷰 목록 조회 API
  */
 export const getProductReviews = async (req, res) => {

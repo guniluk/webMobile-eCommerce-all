@@ -3,15 +3,19 @@ import { AppNotification, Order } from '../types';
 
 interface NotificationState {
   readNotiIds: string[];
+  clearedNotiIds: string[];
   isModalOpen: boolean;
   setModalOpen: (open: boolean) => void;
   markAsRead: (id: string) => void;
   markAllAsRead: (notifications: AppNotification[]) => void;
+  clearAllNotifications: (notifications: AppNotification[]) => void;
+  deleteNotification: (id: string) => void;
   getNotificationsFromOrders: (orders: Order[]) => AppNotification[];
 }
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
   readNotiIds: [],
+  clearedNotiIds: [],
   isModalOpen: false,
 
   setModalOpen: (open) => set({ isModalOpen: open }),
@@ -28,10 +32,25 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       readNotiIds: notifications.map((n) => n.id),
     }),
 
+  clearAllNotifications: (notifications) =>
+    set((state) => ({
+      clearedNotiIds: [
+        ...state.clearedNotiIds,
+        ...notifications.map((n) => n.id),
+      ],
+    })),
+
+  deleteNotification: (id) =>
+    set((state) => ({
+      clearedNotiIds: state.clearedNotiIds.includes(id)
+        ? state.clearedNotiIds
+        : [...state.clearedNotiIds, id],
+    })),
+
   getNotificationsFromOrders: (orders) => {
     if (!orders || orders.length === 0) return [];
     const notis: AppNotification[] = [];
-    const { readNotiIds } = get();
+    const { readNotiIds, clearedNotiIds } = get();
 
     orders.forEach((ord) => {
       const prodName =
@@ -49,35 +68,68 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
           })
         : '최근';
 
-      // 1. 배송 완료 상태 알림
+      // 개별 주문당 1개의 최신 상태 알림만 매핑 (1 Order = 1 Notification)
       if (ord.isDelivered || ord.status === 'delivered') {
-        const notiId = `noti-delivered-${ord._id}`;
+        const notiId = `noti-${ord._id}`;
         notis.push({
           id: notiId,
           orderId: ord._id,
           title: '배송 완료 📦',
-          message: `주문하신 [${prodSummary}] 상품이 성공적으로 배송 완료되었습니다. 마음에 드셨다면 리뷰를 남겨보세요!`,
+          message: `주문하신 [${prodSummary}] 상품이 성공적으로 배송 완료되었습니다. 리뷰를 남겨보세요!`,
           type: 'delivery',
           statusBadge: '배송완료',
           read: readNotiIds.includes(notiId),
           createdAt: dateStr,
           orderProductNames: prodSummary,
         });
-      }
-
-      // 2. 결제 완료 / 배송 중 상태 알림
-      if (ord.isPaid) {
-        const notiId = `noti-paid-${ord._id}`;
+      } else if (ord.status === 'shipped') {
+        const notiId = `noti-${ord._id}`;
         notis.push({
           id: notiId,
           orderId: ord._id,
-          title: ord.status === 'shipped' ? '배송 시작 🚚' : '결제 완료 💳',
-          message:
-            ord.status === 'shipped'
-              ? `[${prodSummary}] 상품이 출발하여 배송 중입니다.`
-              : `[${prodSummary}] 결제가 확인되어 상품 배송을 준비 중입니다.`,
-          type: ord.status === 'shipped' ? 'delivery' : 'payment',
-          statusBadge: ord.status === 'shipped' ? '배송중' : '결제완료',
+          title: '배송 시작 🚚',
+          message: `[${prodSummary}] 상품이 출발하여 현재 고객님께 배송 중입니다.`,
+          type: 'delivery',
+          statusBadge: '배송중',
+          read: readNotiIds.includes(notiId),
+          createdAt: dateStr,
+          orderProductNames: prodSummary,
+        });
+      } else if (ord.isPaid || ord.status === 'processing' || ord.status === 'paid') {
+        const notiId = `noti-${ord._id}`;
+        notis.push({
+          id: notiId,
+          orderId: ord._id,
+          title: '결제 완료 💳',
+          message: `[${prodSummary}] 결제가 완료되어 배송 준비가 진행 중입니다.`,
+          type: 'payment',
+          statusBadge: '결제완료',
+          read: readNotiIds.includes(notiId),
+          createdAt: dateStr,
+          orderProductNames: prodSummary,
+        });
+      } else if (ord.status === 'cancelled') {
+        const notiId = `noti-${ord._id}`;
+        notis.push({
+          id: notiId,
+          orderId: ord._id,
+          title: '주문 취소 ❌',
+          message: `[${prodSummary}] 주문이 취소되었습니다.`,
+          type: 'info',
+          statusBadge: '주문취소',
+          read: readNotiIds.includes(notiId),
+          createdAt: dateStr,
+          orderProductNames: prodSummary,
+        });
+      } else {
+        const notiId = `noti-${ord._id}`;
+        notis.push({
+          id: notiId,
+          orderId: ord._id,
+          title: '주문 접수 완료 📝',
+          message: `[${prodSummary}] 주문(₩${ord.totalPrice?.toLocaleString()})이 성공적으로 접수되었습니다.`,
+          type: 'info',
+          statusBadge: '주문접수',
           read: readNotiIds.includes(notiId),
           createdAt: dateStr,
           orderProductNames: prodSummary,
@@ -85,6 +137,6 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       }
     });
 
-    return notis;
+    return notis.filter((n) => !clearedNotiIds.includes(n.id));
   },
 }));

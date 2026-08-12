@@ -192,7 +192,26 @@ export const api = {
   clearCart: (token: string | null): Promise<void> =>
     http.delete<void>('/carts/clear', token),
 
-  // 3. 주문 (Orders) API
+  // 3. 주문 및 결제 (Orders & Payment) API
+  createPaymentIntent: (
+    data: {
+      cartItems: { productId: string; quantity: number }[];
+      shippingAddress: ShippingAddress;
+    },
+    token: string | null,
+  ): Promise<{
+    success: boolean;
+    clientSecret: string;
+    paymentIntentId: string;
+    amountDetails: {
+      subtotal: number;
+      shippingFee: number;
+      taxAmount: number;
+      totalAmount: number;
+    };
+    message?: string;
+  }> => http.post<any>('/payment/create-intent', data, token),
+
   createOrder: (
     orderData: {
       orderItems: {
@@ -335,4 +354,67 @@ export const api = {
     },
     token: string | null,
   ): Promise<Review> => http.post<Review>('/reviews', reviewData, token),
+
+  updateReview: (
+    reviewId: string,
+    reviewData: {
+      rating?: number;
+      comment?: string;
+    },
+    token: string | null,
+  ): Promise<Review> => http.put<Review>(`/reviews/${reviewId}`, reviewData, token),
+
+  deleteReview: (
+    reviewId: string,
+    token: string | null,
+  ): Promise<{ message: string }> => http.delete<{ message: string }>(`/reviews/${reviewId}`, token),
+
+  // 8. 알림 (Notifications) DB 연동 API
+  getNotifications: async (
+    token: string | null,
+  ): Promise<{ notifications: any[]; unreadCount: number }> => {
+    if (!token) return { notifications: [], unreadCount: 0 };
+    return http.get<{ notifications: any[]; unreadCount: number }>(
+      '/notifications',
+      token,
+    );
+  },
+
+  markNotificationAsRead: (
+    notificationId: string,
+    token: string | null,
+  ): Promise<{ success: boolean; unreadCount: number }> =>
+    request<{ success: boolean; unreadCount: number }>(
+      'PUT',
+      `/notifications/${notificationId}/read`,
+      {},
+      token,
+    ),
+
+  markAllNotificationsAsRead: (
+    token: string | null,
+  ): Promise<{ success: boolean; unreadCount: number }> =>
+    request<{ success: boolean; unreadCount: number }>(
+      'PUT',
+      '/notifications/read-all',
+      {},
+      token,
+    ),
+
+  deleteNotification: (
+    notificationId: string,
+    token: string | null,
+  ): Promise<{ success: boolean; unreadCount: number }> =>
+    http.delete<{ success: boolean; unreadCount: number }>(
+      `/notifications/${notificationId}`,
+      token,
+    ),
+
+  clearAllNotifications: (
+    token: string | null,
+  ): Promise<{ success: boolean; unreadCount: number }> =>
+    http.delete<{ success: boolean; unreadCount: number }>(
+      '/notifications',
+      token,
+    ),
 };

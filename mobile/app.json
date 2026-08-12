@@ -21,7 +21,6 @@
     },
     "androidStatusBar": {
       "barStyle": "light-content",
-      "backgroundColor": "#00000000",
       "translucent": true
     },
     "web": {
@@ -51,7 +50,9 @@
           "project": "react-native",
           "organization": "byhcoding"
         }
-      ]
+      ],
+      "@sentry/react-native",
+      "@stripe/stripe-react-native"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,5 +1,5 @@
 import '../global.css';
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -10,34 +10,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as WebBrowser from 'expo-web-browser';
 import { tokenCache } from '../lib/cache';
 import * as Sentry from '@sentry/react-native';
-import { NotificationModal } from '../components/NotificationModal';
-import { useNotificationStore } from '../store/useNotificationStore';
-import { useOrdersQuery } from '../hooks/useOrdersQuery';
-
-// 🛡️ Sentry 에러 조용한 전송 설정 (콘솔 메세지 비표시, 오직 실제 Error 발생 시에만 백그라운드 전송)
-Sentry.init({
-  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
-  sendDefaultPii: true,
-  enableLogs: false,
-  debug: false,
-  tracesSampleRate: 0, // 🚫 화면 이동 트레이스 터미널 메시지 출력 비활성화
-  replaysSessionSampleRate: 0, // 🚫 일반 세션 비디오 전송 비활성화
-  replaysOnErrorSampleRate: 1.0, // ⚠️ 에러가 발생한 순간에만 Replay 캡처
-  attachStacktrace: true,
-  attachScreenshot: true, // 📸 에러 발생 시 스크린샷 캡처
-  attachViewHierarchy: true,
-  integrations: [
-    Sentry.mobileReplayIntegration({
-      maskAllText: false,
-      maskAllImages: false,
-      maskAllVectors: false,
-    }),
-  ],
-});
+import { StripeProvider } from '@stripe/stripe-react-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || '';
+const stripePublishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 
 function AuthGuard() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -100,20 +78,22 @@ function RootLayout() {
   );
 
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <ClerkLoaded>
-        <QueryClientProvider client={queryClient}>
-          <SafeAreaProvider>
-            <StatusBar
-              style={isDark ? 'light' : 'dark'}
-              hidden={false}
-              translucent={true}
-            />
-            <InitialLayout />
-          </SafeAreaProvider>
-        </QueryClientProvider>
-      </ClerkLoaded>
-    </ClerkProvider>
+    <StripeProvider publishableKey={stripePublishableKey}>
+      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+        <ClerkLoaded>
+          <QueryClientProvider client={queryClient}>
+            <SafeAreaProvider>
+              <StatusBar
+                style={isDark ? 'light' : 'dark'}
+                hidden={false}
+                translucent={true}
+              />
+              <InitialLayout />
+            </SafeAreaProvider>
+          </QueryClientProvider>
+        </ClerkLoaded>
+      </ClerkProvider>
+    </StripeProvider>
   );
 }
 

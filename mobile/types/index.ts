@@ -92,12 +92,17 @@ export interface Order {
     id: string;
     status: string;
   };
+  subtotal?: number;
+  shippingFee?: number;
+  taxAmount?: number;
   totalPrice: number;
   isPaid?: boolean;
   paidAt?: string;
+  isShipped?: boolean;
+  shippedAt?: string;
   isDelivered?: boolean;
   deliveredAt?: string;
-  status?: 'pending' | 'shipped' | 'delivered' | string;
+  status?: 'pending' | 'processing' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | string;
   hasReviewed?: boolean;
   createdAt?: string;
   updatedAt?: string;

@@ -13,6 +13,13 @@ export const getCart = async (req, res) => {
       return res.status(200).json({ cart: { items: [] } });
     }
 
+    // 이미 DB에서 삭제된 유효하지 않은 null 상품 자동 정제 (Null-safety Sanitization)
+    const validItems = cart.items.filter((item) => item.productId !== null);
+    if (validItems.length !== cart.items.length) {
+      cart.items = validItems;
+      await cart.save();
+    }
+
     return res.status(200).json({ cart });
   } catch (error) {
     console.error("장바구니 조회 실패:", error);
@@ -42,7 +49,7 @@ export const addToCart = async (req, res) => {
         message: "존재하지 않는 상품입니다.",
       });
     }
-    if (product.stock <= addQuantity) {
+    if (product.stock < addQuantity) {
       return res.status(400).json({
         message: `재고가 부족합니다. (현재 재고: ${product.stock}개)`,
       });
@@ -150,9 +157,9 @@ export const updateCartItem = async (req, res) => {
         message: "존재하지 않는 상품입니다.",
       });
     }
-    if (product.stock <= newQuantity) {
+    if (product.stock < newQuantity) {
       return res.status(400).json({
-        message: `장바구니에 해당 상품을 추가할 경우 재고가 부족합니다. (현재 재고: ${product.stock}개)`,
+        message: `장바구니 수량이 상품 재고를 초과합니다. (현재 재고: ${product.stock}개)`,
       });
     }
     cart.items[existingItemIndex].quantity = newQuantity;

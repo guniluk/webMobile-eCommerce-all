@@ -85,7 +85,7 @@ const OrdersPage = () => {
             Filter Status:
           </span>
           <div className="join ml-2">
-            {['ALL', 'pending', 'shipped', 'delivered'].map((st) => (
+            {['ALL', 'pending', 'processing', 'shipped', 'delivered', 'cancelled'].map((st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
@@ -192,9 +192,11 @@ const OrdersPage = () => {
                           disabled={updateStatusMutation.isPending}
                           className="select select-bordered select-xs bg-base-200 text-base-content font-bold cursor-pointer"
                         >
-                          <option value="pending">pending (대기)</option>
+                          <option value="pending">pending (주문접수)</option>
+                          <option value="processing">processing (배송준비)</option>
                           <option value="shipped">shipped (배송중)</option>
                           <option value="delivered">delivered (배송완료)</option>
+                          <option value="cancelled">cancelled (주문취소)</option>
                         </select>
                       </td>
                     </tr>

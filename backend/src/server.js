@@ -16,6 +16,8 @@ import orderRoute from "./routes/order.route.js";
 import reviewRoute from "./routes/review.route.js";
 import productRoute from "./routes/product.route.js";
 import cartRoute from "./routes/cart.route.js";
+import paymentRoute from "./routes/payment.route.js";
+import notificationRoute from "./routes/notification.route.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,14 +25,24 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 글로벌 미들웨어 (CORS 허용)
+// 글로벌 미들웨어 (CORS 허용 & Stripe Webhook rawBody 캡처 지원)
 app.use(
   cors({
     origin: true,
     credentials: true,
   }),
 );
-app.use(express.json({ limit: "50mb" }));
+
+app.use(
+  express.json({
+    limit: "50mb",
+    verify: (req, res, buf) => {
+      if (req.originalUrl && req.originalUrl.includes("/webhook")) {
+        req.rawBody = buf;
+      }
+    },
+  }),
+);
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(clerkMiddleware()); // req.auth 주입
 
@@ -49,6 +61,8 @@ app.use("/api/orders", orderRoute);
 app.use("/api/reviews", reviewRoute);
 app.use("/api/products", productRoute);
 app.use("/api/carts", cartRoute);
+app.use("/api/payment", paymentRoute);
+app.use("/api/notifications", notificationRoute);
 
 // 3. Render.com 프로덕션 전용 기능 (Self-Ping Cron & Frontend 정적 서빙)
 if (process.env.NODE_ENV === "production") {

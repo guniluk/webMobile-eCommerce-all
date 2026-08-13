@@ -1,161 +1,114 @@
-# React (Vite) 환경에서 TanStack Query (v5) 설치 및 사용 가이드
+# ⚡ TanStack React Query v5 초보자 완전 가이드 (Web & Mobile)
 
-이 문서는 **TanStack Query (React Query v5)**를 설치하고 프로젝트에 적용 및 활용하는 전 과정을 초보자도 쉽게 따라 할 수 있도록 정리한 실전 가이드입니다.
-
----
-
-## 1. TanStack Query란?
-
-TanStack Query는 React 애플리케이션에서 **서버 상태(Server State) 관리, 데이터 패칭(Data Fetching), 캐싱(Caching), 자동 재요청(Auto Re-fetching)** 등을 간편하게 처리해 주는 라이브러리입니다.
+이 문서는 **Vite React 웹 프론트엔드**와 **Expo React Native 모바일 앱**에서 서버 데이터 패칭, 캐싱, 자동 리프레시를 관리해 주는 **TanStack React Query v5** 라이브러리의 실전 활용 가이드입니다.
 
 ---
 
-## 2. 설치 방법
+## 📌 목차 (Table of Contents)
+1. [TanStack Query 개념 & 도입 장점](#1-tanstack-query-개념--도입-장점)
+2. [패키지 설치 및 QueryClientProvider 설정](#2-패키지-설치-및-queryclientprovider-설정)
+3. [데이터 조회: `useQuery` 사용법 ([useProductsQuery.ts](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/mobile/hooks/useProductsQuery.ts))](#3-데이터-조회-usequery-사용법)
+4. [데이터 수정: `useMutation` & 자동 무효화 `invalidateQueries`](#4-데이터-수정-usemutation--자동-무효화-invalidatequeries)
+5. [자주 하는 실수 & 검증 (Troubleshooting)](#5-자주-하는-실수--검증-troubleshooting)
 
-터미널에서 프론트엔드 디렉터리(`frontend`)로 이동한 후 설치를 진행합니다.
+---
+
+## 1. TanStack Query 개념 & 도입 장점
+
+**TanStack React Query**는 서버 상태(Server State) 관리 라이브러리로, 데이터 패칭, 로딩/에러 상태 관리, 자동으로 백그라운드 재패칭(Refetching), 캐싱(Caching)을 손쉽게 처리해 줍니다.
+
+---
+
+## 2. 패키지 설치 및 QueryClientProvider 설정
+
+### 2.1 패키지 설치
 
 ```bash
-cd frontend
-npm install @tanstack/react-query @tanstack/react-query-devtools
+# Web 및 Mobile 디렉터리 공통
+npm install @tanstack/react-query
 ```
 
----
-
-## 3. 기본 세팅 (`main.jsx`)
-
-애플리케이션 전역에서 TanStack Query를 사용할 수 있도록 `QueryClient` 인스턴스를 생성하고 `<QueryClientProvider>`로 감싸줍니다.
-
-### 📄 `frontend/src/main.jsx`
+### 2.2 최상위 Provider 감싸기 (`App.jsx` 또는 `_layout.tsx`)
 
 ```jsx
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import "./index.css";
-import App from "./App.jsx";
-import { BrowserRouter } from "react-router";
-import { ClerkProvider } from "@clerk/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-// 1. QueryClient 인스턴스 생성
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5분간 데이터 "신선" 상태 유지 (자동 재요청 방지)
-      retry: 1, // 실패 시 1회 재시도
+      staleTime: 1000 * 60 * 5, // 5분간 캐시 데이터 신선도 유지
+      retry: 1,
     },
   },
 });
 
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-
-createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    {/* 2. QueryClientProvider로 앱 전체를 감싸기 */}
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
-          <App />
-        </ClerkProvider>
-      </BrowserRouter>
-      {/* 3. 개발자 도구 (개발 환경에서 화면 하단에 표시) */}
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
-  </StrictMode>
-);
-```
-
----
-
-## 4. 핵심 사용법 (Hooks)
-
-### 4.1 데이터 조회: `useQuery`
-
-서버에서 데이터를 읽어올 때(GET 요청) 사용합니다.
-
-```jsx
-import { useQuery } from "@tanstack/react-query";
-
-// API 요청 함수
-const fetchProducts = async () => {
-  const res = await fetch("/api/products");
-  if (!res.ok) throw new Error("상품 목록을 불러오는데 실패했습니다.");
-  return res.json();
-};
-
-function ProductList() {
-  const { data: products, isLoading, isError, error } = useQuery({
-    queryKey: ["products"], // 캐싱에 사용되는 고유 키
-    queryFn: fetchProducts, // 데이터를 가져오는 비동기 함수
-  });
-
-  if (isLoading) return <div>로딩 중...</div>;
-  if (isError) return <div>에러 발생: {error.message}</div>;
-
+export default function App() {
   return (
-    <ul>
-      {products.map((item) => (
-        <li key={item.id}>{item.name} - {item.price}원</li>
-      ))}
-    </ul>
+    <QueryClientProvider client={queryClient}>
+      {/* 하위 컴포넌트들 */}
+    </QueryClientProvider>
   );
 }
 ```
 
 ---
 
-### 4.2 데이터 변경 및 무효화: `useMutation`
+## 3. 데이터 조회: `useQuery` 사용법
 
-서버에 데이터를 생성/수정/삭제(POST, PUT, DELETE)할 때 사용하며, 완료 후 기존 캐시 데이터를 갱신(`invalidateQueries`)합니다.
+모바일 커스텀 훅([useProductsQuery.ts](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/mobile/hooks/useProductsQuery.ts)) 예시입니다:
 
-```jsx
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+```typescript
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../lib/api';
 
-// API 요청 함수 (새 상품 추가)
-const addProduct = async (newProduct) => {
-  const res = await fetch("/api/products", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(newProduct),
+export const useProductsQuery = (category?: string, search?: string) => {
+  return useQuery({
+    queryKey: ['products', category || 'All', search || ''],
+    queryFn: () => api.getProducts(category, search),
   });
-  return res.json();
 };
+```
 
-function AddProductForm() {
+사용하는 컴포넌트:
+```tsx
+const { data: products, isLoading, isError } = useProductsQuery(selectedCategory, searchQuery);
+
+if (isLoading) return <ActivityIndicator />;
+```
+
+---
+
+## 4. 데이터 수정: `useMutation` & 자동 무효화 `invalidateQueries`
+
+주문 생성 시 즉시 서버 데이터를 최신화하는 패턴 예시입니다:
+
+```typescript
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+
+export const useCreateOrderMutation = () => {
   const queryClient = useQueryClient();
 
-  const mutation = useMutation({
-    mutationFn: addProduct,
+  return useMutation({
+    mutationFn: (orderData: any) => api.createOrder(orderData),
     onSuccess: () => {
-      // 상품 생성 성공 시 'products' 키의 캐시를 무효화하여 자동으로 최신 목록 다시 요청
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      alert("상품이 추가되었습니다!");
-    },
-    onError: (error) => {
-      console.error("추가 실패:", error);
+      // 🔄 주문 목록 및 장바구니 관련 캐시 즉시 무효화하여 최신 데이터로 리프레시
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    mutation.mutate({ name: "새 상품", price: 15000 });
-  };
-
-  return (
-    <button onClick={handleSubmit} disabled={mutation.isPending}>
-      {mutation.isPending ? "추가 중..." : "상품 추가하기"}
-    </button>
-  );
-}
+};
 ```
 
 ---
 
-## 5. 실전 요약 표
+## 5. 자주 하는 실수 & 검증 (Troubleshooting)
 
-| 기능 | Hook / 메서드 | 설명 |
-|---|---|---|
-| **데이터 읽기** | `useQuery` | 데이터 조회, 자동 캐싱, 로딩/에러 상태 관리 |
-| **데이터 변경** | `useMutation` | 생성(C), 수정(U), 삭제(D) 비동기 작업 처리 |
-| **캐시 갱신** | `queryClient.invalidateQueries` | 기존 캐시를 만료시켜 최신 데이터 자동 패칭 |
-| **디버깅 도구** | `<ReactQueryDevtools />` | 캐시 상태 확인 및 수동 갱신/초기화 툴 제공 |
+| 현상 | 원인 | 해결 방법 |
+| :--- | :--- | :--- |
+| `queryClient` undefined 에러 | `QueryClientProvider` 미감쌈 | 최상위 컴포넌트에서 `QueryClientProvider`로 감쌌는지 확인 |
+| `queryKey` 변경에도 데이터 안 바뀜 | `queryKey` 배열 요소 누락 | 의존하는 상태값(`category`, `search`)을 `queryKey` 배열에 포함시켰는지 확인 |
+
+---
+
+© Web & Mobile Fullstack E-Commerce Platform. All rights reserved.

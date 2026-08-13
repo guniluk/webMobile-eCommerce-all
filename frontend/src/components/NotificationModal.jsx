@@ -62,7 +62,7 @@ const NotificationModal = ({
         </div>
 
         {/* Content Body */}
-        <div className="py-4 max-h-[380px] overflow-y-auto custom-scrollbar">
+        <div className="py-4 max-h-95 overflow-y-auto custom-scrollbar">
           {notifications.length === 0 ? (
             /* 🔔 알림이 없는 상태 */
             <div className="py-10 text-center flex flex-col items-center justify-center">

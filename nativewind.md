@@ -1,75 +1,67 @@
-# 📱 Expo (React Native) 환경 NativeWind v4 오류 없는 완벽 설치 & 세팅 가이드
+# 📱 NativeWind v4 초보자 & 실전 완전 가이드 (Expo / React Native)
 
-이 문서는 **Expo (React Native)** 모바일 프로젝트에 **NativeWind v4(Tailwind CSS)**를 에러 없이 안전하게 설치하고 설정하는 전체 과정을 누구나 쉽게 따라 할 수 있도록 정리한 완전 가이드입니다.
+이 문서는 **Expo(React Native)** 프로젝트에서 Tailwind CSS 스타일링 라이브러리인 **NativeWind v4**를 설치하고 세팅하는 가장 최신의 쉽고 자세한 실전 가이드입니다.
 
----
-
-## 📌 1. NativeWind란?
-
-**NativeWind**는 웹 개발에서 널리 쓰이는 **Tailwind CSS 유틸리티 클래스**를 React Native 컴포넌트(`View`, `Text`, `TouchableOpacity` 등)의 `className` 속성으로 그대로 사용할 수 있게 해주는 라이브러리입니다.
+> 💡 **NativeWind v4 핵심 차이점**  
+> NativeWind v4부터는 Metro 번들러와의 통합을 위해 **`metro.config.js` 설정이 필수**입니다! `metro.config.js`를 통해 CSS를 모바일 런타임용 스타일로 사전 빌드 및 변환합니다.
 
 ---
 
-## ⚠️ 2. 에러 방지를 위한 핵심 사전 체크
+## 📌 목차 (Table of Contents)
 
-NativeWind 설치 시 가장 빈번하게 발생하는 **`SyntaxError: private properties are not supported`** 또는 **`Cannot find module 'babel-preset-expo'`** 에러는 패키지 버전 미스매치 및 Babel 플러그인 누락이 원인입니다.
-
-아래 가이드는 Expo SDK 버전과의 호환성을 100% 보장하는 **안전한 설치 순서**로 작성되었습니다.
+1. [NativeWind란 무엇인가?](#1-nativewind란-무엇인가)
+2. [필수 6단계 세팅 절차 (Metro.config.js 포함)](#2-필수-6단계-세팅-절차-metroconfigjs-포함)
+   - [1단계: 패키지 설치](#21-1단계-패키지-설치)
+   - [2단계: `tailwind.config.js` 생성 및 설정](#22-2단계-tailwindconfigjs-생성-및-설정)
+   - [3단계: `global.css` 생성](#23-3단계-globalcss-생성)
+   - [4단계: `metro.config.js` 설정 (★ 핵심)](#24-4단계-metroconfigjs-설정--핵심)
+   - [5단계: `babel.config.js` 설정](#25-5단계-babelconfigjs-설정)
+   - [6단계: TypeScript 타입 선언 (`nativewind-env.d.ts`)](#26-6단계-typescript-타입-선언-nativewind-envdts)
+3. [Root Layout에서 CSS 적용하기 (`app/_layout.tsx`)](#3-root-layout에서-css-적용하기-app_layouttsx)
+4. [실전 사용 예시](#4-실전-사용-예시)
+5. [NativeWind v4 자주 묻는 질문 & 트러블슈팅](#5-nativewind-v4-자주-묻는-질문--트러블슈팅)
 
 ---
 
-## 🛠️ 3. 단계별 완벽 설치 및 세팅 절차
+## 1. NativeWind란 무엇인가?
 
-### 1단계: 모바일 디렉터리로 이동
+**NativeWind**는 웹에서 가장 인기 있는 Tailwind CSS 유틸리티 클래스를 React Native 모바일 앱 환경에서 사용할 수 있게 해주는 라이브러리입니다.
 
-터미널을 열고 모바일 프로젝트 폴더(`mobile`)로 이동합니다.
+`StyleSheet.create` 대신 `className="flex-row p-4 bg-sky-500 rounded-2xl"` 과 같이 React Native 컴포넌트에 직접 Tailwind 클래스를 작성하여 반응형 및 직관적인 UI를 신속하게 구현할 수 있습니다.
+
+---
+
+## 2. 필수 6단계 세팅 절차 (Metro.config.js 포함)
+
+모든 설치 명령 및 작업은 모바일 프로젝트 디렉터리(예: `mobile/`) 내부에서 진행합니다.
 
 ```bash
 cd mobile
 ```
 
----
+### 2.1 1단계: 패키지 설치
 
-### 2단계: NativeWind 및 의존 패키지 안전 설치
-
-일반 `npm install` 대신 **`npx expo install`** 명령어를 사용하면 현재 설치된 Expo SDK 버전(SDK 54 등)과 100% 호환되는 최적의 패키지 버전이 자동으로 설치됩니다.
+NativeWind v4 및 필수 의존성 패키지를 설치합니다:
 
 ```bash
-# Expo 호환 설치 명령
-npx expo install nativewind tailwindcss@^3.4.17 react-native-reanimated
+npx expo install nativewind tailwindcss react-native-reanimated react-native-safe-area-context
 ```
 
 ---
 
-### 3단계: `global.css` 메인 스타일 파일 생성
+### 2.2 2단계: `tailwind.config.js` 생성 및 설정
 
-프로젝트 루트(`mobile/global.css`)에 Tailwind CSS 기본 지시어를 포함하는 CSS 파일을 생성합니다.
-
-#### 📄 `mobile/global.css`
-
-```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-```
-
----
-
-### 4단계: `tailwind.config.js` 설정 파일 생성
-
-Tailwind CSS가 클래스를 스캔할 파일 경로와 NativeWind 프리셋을 설정합니다.
-
-#### 📄 `mobile/tailwind.config.js`
+`mobile/` 디렉터리에 `tailwind.config.js` 파일이 없는 경우 생성 후 아래와 같이 설정합니다:
 
 ```javascript
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  // 스타일을 적용할 파일 경로 지정 (app, components, src 폴더 등)
+  // className 스타일을 적용할 파일들의 경로를 지정합니다.
   content: [
     "./app/**/*.{js,jsx,ts,tsx}",
     "./components/**/*.{js,jsx,ts,tsx}",
-    "./src/**/*.{js,jsx,ts,tsx}"
   ],
+  // NativeWind preset 필수 등록
   presets: [require("nativewind/preset")],
   theme: {
     extend: {},
@@ -80,11 +72,26 @@ module.exports = {
 
 ---
 
-### 5단계: Metro 번들러 연동 (`metro.config.js`)
+### 2.3 3단계: `global.css` 생성
 
-Expo의 Metro 번들러가 `global.css`를 인라인 스타일로 번들링할 수 있도록 설정합니다.
+`mobile/global.css` 파일에 Tailwind CSS 진입점을 정의합니다:
 
-#### 📄 `mobile/metro.config.js`
+```css
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+```
+
+---
+
+### 2.4 4단계: `metro.config.js` 설정 (★ 핵심)
+
+> ❓ **질문: `metro.config.js` 설정이 빠져 있었는데 포함하는 것이 맞나요?**  
+> **네, 맞습니다!** NativeWind v4에서는 Metro 번들러가 `global.css` 파일을 읽어 NativeWind 런타임 CSS로 변환하도록 `withNativeWind` 래퍼(Wrapper) 설정이 **반드시 필요**합니다.
+
+`mobile/metro.config.js` 파일에 `withNativeWind`를 적용합니다:
+
+#### 🟢 기본 Expo 프로젝트 세팅 시 (`mobile/metro.config.js`)
 
 ```javascript
 const { getDefaultConfig } = require("expo/metro-config");
@@ -95,13 +102,22 @@ const config = getDefaultConfig(__dirname);
 module.exports = withNativeWind(config, { input: "./global.css" });
 ```
 
+#### 💡 Sentry 등 다른 서드파티 Metro 설정과 함께 사용할 때
+
+```javascript
+const { withNativeWind } = require("nativewind/metro");
+const { getSentryExpoConfig } = require("@sentry/react-native/metro");
+
+const config = getSentryExpoConfig(__dirname);
+
+module.exports = withNativeWind(config, { input: "./global.css" });
+```
+
 ---
 
-### 6단계: Babel 프리셋 및 플러그인 설정 (`babel.config.js`) ★ 중요!
+### 2.5 5단계: `babel.config.js` 설정
 
-> 🚨 **주의**: `react-native-reanimated/plugin` 플러그인을 반드시 포함해야 Private Class Properties 관련 구문 오류(`private properties are not supported`)가 방지됩니다.
-
-#### 📄 `mobile/babel.config.js`
+Babel이 NativeWind JSX 변환 및 Reanimated 플러그인을 처리할 수 있도록 `mobile/babel.config.js`를 작성합니다:
 
 ```javascript
 module.exports = function (api) {
@@ -112,7 +128,7 @@ module.exports = function (api) {
       "nativewind/babel",
     ],
     plugins: [
-      "react-native-reanimated/plugin", // Reanimated 및 Private 문법 호환성용 플러그인
+      "react-native-reanimated/plugin",
     ],
   };
 };
@@ -120,63 +136,69 @@ module.exports = function (api) {
 
 ---
 
-### 7단계: TypeScript 타입 선언 (`nativewind-env.d.ts`)
+### 2.6 6단계: TypeScript 타입 선언 (`nativewind-env.d.ts`)
 
-TypeScript 환경에서 `className` 속성 사용 시 빨간 줄(타입 에러)이 생기지 않도록 타입 선언 파일을 생성합니다.
+TypeScript 프로젝트의 경우, React Native 컴포넌트(`View`, `Text` 등)에서 `className` 프로퍼티를 인식하여 빨간 줄(에러)이 뜨지 않도록 타입 선언을 추가합니다.
 
-#### 📄 `mobile/nativewind-env.d.ts`
+`mobile/nativewind-env.d.ts` 생성:
 
 ```typescript
 /// <reference types="nativewind/types" />
 ```
 
+> **참고**: `mobile/tsconfig.json` 파일의 `include` 항목에 `"nativewind-env.d.ts"`가 포함되어 있는지 확인하세요.
+
 ---
 
-### 8단계: 최상위 레이아웃에 `global.css` 임포트
+## 3. Root Layout에서 CSS 적용하기 (`app/_layout.tsx`)
 
-Expo Router의 최상위 레이아웃 파일(`app/_layout.tsx` 또는 `app/_layout.jsx`) 맨 위에 `global.css`를 불러옵니다.
+세팅의 마지막 단계로, 최상위 레이아웃 파일에서 `global.css`를 불러옵니다.
 
-#### 📄 `mobile/app/_layout.tsx`
+`mobile/app/_layout.tsx` 파일 최상단:
 
 ```tsx
-import '../global.css'; // 👈 파일 최상단에 임포트 필수!
-import { Stack } from 'expo-router';
+import "../global.css"; // 👈 최상단에서 global.css 임포트
+import { Stack } from "expo-router";
 
 export default function RootLayout() {
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-      }}
-    />
+    <Stack>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+    </Stack>
   );
 }
 ```
 
 ---
 
-### 9단계: React Native 컴포넌트에 NativeWind 적용 및 확인
+## 4. 실전 사용 예시
 
-이제 `className` 속성을 이용해 자유롭게 Tailwind CSS 스타일을 적용할 수 있습니다!
-
-#### 📄 `mobile/app/index.tsx` 예시
+설정이 완료되면 `className` 속성을 이용해 유틸리티 스타일을 자유롭게 적용할 수 있습니다.
 
 ```tsx
-import { Text, View } from 'react-native';
+import { View, Text, TouchableOpacity } from "react-native";
 
-export default function Index() {
+export default function NativeWindSampleCard() {
   return (
-    <View className="flex-1 justify-center items-center bg-slate-900 px-6">
-      <View className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg items-center max-w-sm w-full">
-        <Text className="text-3xl font-extrabold text-cyan-400 mb-2">
-          NativeWind v4 🚀
+    <View className="flex-1 p-4 justify-center items-center bg-slate-100 dark:bg-slate-900">
+      {/* 카드 Container */}
+      <View className="w-full max-w-sm p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-md">
+        <Text className="text-xl font-bold text-slate-800 dark:text-white mb-2">
+          NativeWind v4 적용완료! 🎉
         </Text>
-        <Text className="text-lg font-semibold text-slate-100 mb-4">
-          오류 없이 완벽 적용 완료!
+        <Text className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+          metro.config.js 통합으로 빌드 타임 CSS 처리가 더욱 빠르고 강력해졌습니다.
         </Text>
-        <Text className="text-sm text-slate-400 text-center leading-6">
-          React Native에서도 Tailwind CSS className 스타일을 빠르게 활용할 수 있습니다.
-        </Text>
+
+        {/* 액션 버튼 */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          className="w-full py-3 bg-sky-500 active:bg-sky-600 rounded-2xl items-center"
+        >
+          <Text className="text-white font-bold text-base">
+            시작하기
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -185,70 +207,15 @@ export default function Index() {
 
 ---
 
-## 🧪 4. 검증 및 캐시 클리어 실행
+## 5. NativeWind v4 자주 묻는 질문 & 트러블슈팅
 
-설정 변경 후 이전 번들 캐시로 인한 오류를 방지하기 위해 **반드시 `--clear` 옵션**으로 서버를 실행합니다:
-
-```bash
-# 1. 의존성 패키지 정상 여부 검증
-npx expo-doctor
-
-# 2. 캐시를 비우고 앱 실행 (필수!)
-npx expo start --clear
-```
+| 증상 및 문제 | 원인 | 해결 방법 |
+| :--- | :--- | :--- |
+| **`className` 스타일이 완전히 무시됨** | `metro.config.js` 누락 또는 `global.css` 경로 불일치 | `metro.config.js`에 `withNativeWind(config, { input: "./global.css" })`가 정상 적용되어 있는지 및 `app/_layout.tsx`에서 `import '../global.css'`를 실행했는지 확인합니다. |
+| **TypeScript에서 `className`에 빨간 줄(Lint 에러)** | `nativewind-env.d.ts` 선언 누락 | `mobile/nativewind-env.d.ts` 파일에 `/// <reference types="nativewind/types" />` 추가 확인 |
+| **스타일 변경 후 모바일 앱에 반영되지 않음** | Metro 캐시 꼬임 | `npx expo start -c` 명령어로 캐시를 맑게 초기화한 후 개발 서버 재시작 |
+| **`content` 경로 관련 스타일 미적용** | `tailwind.config.js` 경로 설정 오류 | `content: ["./app/**/*.{js,jsx,ts,tsx}", "./components/**/*.{js,jsx,ts,tsx}"]`와 같이 스타일을 사용할 파일 경로가 올바른지 확인 |
 
 ---
 
-## 🛠️ 5. 주요 실전 에러 예방 & 해결 트러블슈팅 (Troubleshooting)
-
-### 🔴 1. `runtime not ready: syntaxError: private properties are not supported`
-- **원인**: `babel-preset-expo` 버전이 Expo SDK와 미스매치되었거나 `react-native-reanimated/plugin` 설정이 누락된 경우.
-- **해결책**:
-  1. `mobile/babel.config.js`에 `plugins: ["react-native-reanimated/plugin"]` 추가.
-  2. 패키지 자동 재정렬 실행:
-     ```bash
-     npx expo install --fix
-     ```
-
----
-
-### 🔴 2. `Error: Cannot find module 'babel-preset-expo'`
-- **원인**: `mobile` 프로젝트 내에 `babel-preset-expo` 모듈이 누락되었거나 손상된 경우.
-- **해결책**:
-  ```bash
-  npx expo install babel-preset-expo
-  ```
-
----
-
-### 🔴 3. `className` 스타일이 화면에 즉시 안 나와요.
-- **원인**: Metro 번들러 및 Babel 캐시가 남아있는 현상.
-- **해결책**: Expo 개발 서버 재시작 시 `--clear` 플래그를 꼭 사용하세요:
-  ```bash
-  npx expo start --clear
-  ```
-
----
-
-### 🔴 4. TypeScript에서 `Property 'className' does not exist...` 빨간 줄 에러
-- **해결책**:
-  1. `mobile/nativewind-env.d.ts` 파일이 존재하는지 확인.
-  2. VSCode에서 `Cmd+Shift+P` ➔ `TypeScript: Restart TS Server` 실행.
-
----
-
-## 📋 요약 체크리스트
-
-| 순서 | 작업 내용 | 파일 / 명령어 | 비고 |
-|:---:|:---|:---|:---|
-| **1** | 패키지 안전 설치 | `npx expo install nativewind tailwindcss@^3.4.17` | SDK 호환 버전 설치 |
-| **2** | CSS 디렉티브 작성 | `mobile/global.css` | `@tailwind base...` |
-| **3** | 스캔 경로 설정 | `mobile/tailwind.config.js` | `presets: [require("nativewind/preset")]` |
-| **4** | Metro 번들러 연결 | `mobile/metro.config.js` | `withNativeWind(config, { input: "./global.css" })` |
-| **5** | Babel & Reanimated 등록 | `mobile/babel.config.js` | `react-native-reanimated/plugin` 추가 |
-| **6** | TypeScript 선언 | `mobile/nativewind-env.d.ts` | `/// <reference types="nativewind/types" />` |
-| **7** | global.css 불러오기 | `mobile/app/_layout.tsx` | 최상단 `import '../global.css'` |
-| **8** | 검증 & 캐시 클리어 실행 | `npx expo-doctor` & `npx expo start --clear` | 에러 없이 실행 |
-
----
-*가이드 작성 완료 - 프로젝트 루트 디렉터리 (`nativewind.md`)*
+© Web & Mobile Fullstack E-Commerce Platform. All rights reserved.

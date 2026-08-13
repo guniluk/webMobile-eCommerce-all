@@ -54,7 +54,7 @@
         }
       ],
       [
-        "@stripe/stripe-react-native",
+        "@stripe/stripe-react-native/app.plugin.js",
         {
           "merchantIdentifier": "merchant.com.mobile.app",
           "enableGooglePay": true

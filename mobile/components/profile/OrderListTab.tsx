@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Order } from '../../types';
+import { formatImageUrl } from '../../lib/productUtils';
 
 interface OrderListTabProps {
   orders: Order[];
@@ -133,16 +134,21 @@ export const OrderListTab: React.FC<OrderListTabProps> = React.memo(function Ord
               const itemPrice = item.price || 0;
               const hasReviewed = !!(item.hasReviewed || item.isReviewed);
 
+              const rawImg =
+                item.image ||
+                (typeof item.product === 'object' && item.product?.image) ||
+                '';
+              const formattedImgUrl = formatImageUrl(rawImg);
+
               return (
                 <View key={idx} className="mb-3">
                   <View className="flex-row items-center">
                     <Image
-                      source={{
-                        uri:
-                          item.image ||
-                          (typeof item.product === 'object' && item.product?.image) ||
-                          'https://via.placeholder.com/150',
-                      }}
+                      source={
+                        formattedImgUrl
+                          ? { uri: formattedImgUrl }
+                          : require('../../assets/images/icon.png')
+                      }
                       className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-700 mr-3"
                     />
                     <View className="flex-1">

@@ -5,6 +5,9 @@ import { Cart } from "../models/cart.model.js";
 import { createOrderNotification } from "../utils/notification.js";
 import mongoose from "mongoose";
 
+const SHIPPING_FEE_STANDARD = 3000;
+const TAX_RATE = 0.1;
+
 export const createOrder = async (req, res) => {
   const user = req.user;
 
@@ -17,7 +20,7 @@ export const createOrder = async (req, res) => {
   }
 
   try {
-    const { orderItems, shippingAddress, totalPrice, paymentResult, paymentMethod } = req.body;
+    const { orderItems, shippingAddress, totalPrice, paymentResult } = req.body;
 
     if (!orderItems || !shippingAddress || totalPrice === undefined) {
       if (session) {
@@ -26,6 +29,48 @@ export const createOrder = async (req, res) => {
       }
       return res.status(400).json({
         message: "모든 필수 정보가 제공되지 않았습니다.",
+      });
+    }
+
+    // 🛡️ shippingAddress 모든 필드 유효성 검증
+    if (typeof shippingAddress !== "object") {
+      if (session) {
+        await session.abortTransaction();
+        session.endSession();
+      }
+      return res.status(400).json({
+        message: "배송지 정보(shippingAddress)가 올바르지 않습니다.",
+      });
+    }
+
+    const fullName = String(shippingAddress.fullName || "").trim();
+    const streetAddress = String(
+      shippingAddress.streetAddress || shippingAddress.address || "",
+    ).trim();
+    const city = String(shippingAddress.city || "").trim();
+    const state = String(shippingAddress.state || "").trim();
+    const zipCode = String(
+      shippingAddress.zipCode || shippingAddress.postalCode || "",
+    ).trim();
+    const phoneNumber = String(
+      shippingAddress.phoneNumber || shippingAddress.phone || "",
+    ).trim();
+
+    if (
+      !fullName ||
+      !streetAddress ||
+      !city ||
+      !state ||
+      !zipCode ||
+      !phoneNumber
+    ) {
+      if (session) {
+        await session.abortTransaction();
+        session.endSession();
+      }
+      return res.status(400).json({
+        message:
+          "배송지 정보의 모든 필수 필드(이름, 주소, 도시, 도/시, 우편번호, 전화번호)를 입력해 주세요.",
       });
     }
 
@@ -126,23 +171,31 @@ export const createOrder = async (req, res) => {
     }
 
     // 서버 측 배송비 및 세금 일관성 산정 (10만원 이상 무료배송, 10만원 미만 고정 3,000원)
-    const calculatedShippingFee = calculatedSubtotal >= 100000 ? 0 : 3000;
-    const calculatedTaxAmount = Math.round(calculatedSubtotal * 0.1);
+    const calculatedShippingFee =
+      calculatedSubtotal >= 100000 ? 0 : SHIPPING_FEE_STANDARD;
+    const calculatedTaxAmount = Math.round(calculatedSubtotal * TAX_RATE);
     const calculatedTotalPrice = Math.round(
       calculatedSubtotal + calculatedShippingFee + calculatedTaxAmount,
     );
 
-    // 클라이언트 전달 totalPrice가 있는 경우 우선하되, 0 이하인 경우 서버 계산 총액 사용
-    const finalTotalPrice =
-      totalPrice !== undefined && totalPrice > 0 ? totalPrice : calculatedTotalPrice;
+    // 🛡️ 클라이언트 전달 totalPrice와 서버 계산 calculatedTotalPrice 불일치 검증
+    if (totalPrice === undefined || Number(totalPrice) !== calculatedTotalPrice) {
+      if (session) {
+        await session.abortTransaction();
+        session.endSession();
+      }
+      return res.status(400).json({
+        message: `주문 결제 금액이 일치하지 않습니다. (전달된 금액: ${totalPrice}원, 계산된 금액: ${calculatedTotalPrice}원)`,
+      });
+    }
 
     const formattedShippingAddress = {
-      fullName: shippingAddress.fullName || "홍길동",
-      streetAddress: shippingAddress.streetAddress || shippingAddress.address || "테헤란로 123",
-      city: shippingAddress.city || "서울",
-      state: shippingAddress.state || "서울특별시",
-      zipCode: shippingAddress.zipCode || shippingAddress.postalCode || "06234",
-      phoneNumber: shippingAddress.phoneNumber || shippingAddress.phone || "010-0000-0000",
+      fullName,
+      streetAddress,
+      city,
+      state,
+      zipCode,
+      phoneNumber,
     };
 
     // 주문 생성
@@ -159,7 +212,7 @@ export const createOrder = async (req, res) => {
             subtotal: calculatedSubtotal,
             shippingFee: calculatedShippingFee,
             taxAmount: calculatedTaxAmount,
-            totalPrice: finalTotalPrice,
+            totalPrice: calculatedTotalPrice,
           },
         ],
         { session },
@@ -184,7 +237,7 @@ export const createOrder = async (req, res) => {
         subtotal: calculatedSubtotal,
         shippingFee: calculatedShippingFee,
         taxAmount: calculatedTaxAmount,
-        totalPrice: finalTotalPrice,
+        totalPrice: calculatedTotalPrice,
       });
 
       await Cart.findOneAndUpdate({ userId: user._id }, { items: [] });
@@ -232,7 +285,8 @@ export const getUserOrders = async (req, res) => {
 
     const reviewedKeys = new Set(
       reviews.map(
-        (review) => `${review.orderId.toString()}_${review.productId.toString()}`,
+        (review) =>
+          `${review.orderId.toString()}_${review.productId.toString()}`,
       ),
     );
 
@@ -302,7 +356,9 @@ export const updateOrderStatus = async (req, res) => {
       totalPrice: order.totalPrice,
     });
 
-    return res.status(200).json({ message: "주문 상태가 변경되었습니다.", order });
+    return res
+      .status(200)
+      .json({ message: "주문 상태가 변경되었습니다.", order });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

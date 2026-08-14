@@ -107,16 +107,17 @@ export const getAllProducts = async (req, res) => {
     const { category, search } = req.query;
     const query = {};
 
-    if (category && category.trim() !== "" && category.toLowerCase() !== "all") {
+    if (
+      category &&
+      category.trim() !== "" &&
+      category.toLowerCase() !== "all"
+    ) {
       query.category = { $regex: new RegExp(`^${category.trim()}$`, "i") };
     }
 
     if (search && search.trim().length >= 2) {
       const searchRegex = new RegExp(search.trim(), "i");
-      query.$or = [
-        { name: searchRegex },
-        { category: searchRegex },
-      ];
+      query.$or = [{ name: searchRegex }, { category: searchRegex }];
     }
 
     const products = await Product.find(query).sort({ createdAt: -1 }).lean();

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { formatImageUrl } from '../../lib/productUtils';
 
 interface UserProfileCardProps {
   user: any;
@@ -13,7 +14,7 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = React.memo(functi
 }) {
   const userEmail = user?.primaryEmailAddress?.emailAddress || 'user@example.com';
   const userName = user?.fullName || user?.firstName || user?.username || '고객님';
-  const userImage = user?.imageUrl;
+  const userImage = formatImageUrl(user?.imageUrl);
 
   return (
     <View className="dark:bg-slate-800 bg-white rounded-3xl p-5 mb-5 border dark:border-slate-700 border-slate-200 shadow-sm flex-row items-center justify-between">

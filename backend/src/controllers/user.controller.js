@@ -29,16 +29,18 @@ export const syncUser = async (req, res) => {
     const finalEmail =
       email && email.trim() !== ""
         ? email
-        : existingUser && existingUser.email && !existingUser.email.includes("@clerk.user")
-        ? existingUser.email
-        : `${targetClerkId}@clerk.user`;
+        : existingUser &&
+            existingUser.email &&
+            !existingUser.email.includes("@clerk.user")
+          ? existingUser.email
+          : `${targetClerkId}@clerk.user`;
 
     const finalName =
       name && name.trim() !== ""
         ? name
         : existingUser && existingUser.name && existingUser.name !== "User"
-        ? existingUser.name
-        : "User";
+          ? existingUser.name
+          : "User";
 
     const finalImageUrl =
       imageUrl || (existingUser ? existingUser.imageUrl : "");
@@ -64,10 +66,6 @@ export const syncUser = async (req, res) => {
       imageUrl: finalImageUrl,
     };
 
-    console.log(
-      `[syncUser 요청 수신] clerkId: ${targetClerkId}, email: ${userData.email}, name: ${userData.name}`,
-    );
-
     // DB에 존재하면 업데이트, 없으면 생성 (Upsert)
     const user = await User.findOneAndUpdate(
       { clerkId: targetClerkId },
@@ -75,15 +73,12 @@ export const syncUser = async (req, res) => {
       { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
     );
 
-    console.log(`[syncUser 성공] MongoDB User 저장완료 (_id: ${user._id})`);
-
     return res.status(200).json({
       success: true,
       message: "사용자 동기화 성공",
       user,
     });
   } catch (error) {
-    console.error("[syncUser 에러 발생]:", error);
     return res.status(500).json({
       success: false,
       message: "사용자 동기화 실패: " + error.message,
@@ -119,24 +114,20 @@ export const handleClerkWebhook = async (req, res) => {
         { clerkId: id, email, name, imageUrl },
         { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
       );
-      console.log(`[Clerk Webhook] 유저 생성 완료: ${id} (_id: ${user._id})`);
     } else if (type === "user.updated" || type === "clerk/user.updated") {
       await User.findOneAndUpdate(
         { clerkId: id },
         { email, name, imageUrl },
         { returnDocument: "after" },
       );
-      console.log(`[Clerk Webhook] 유저 수정 완료: ${id}`);
     } else if (type === "user.deleted" || type === "clerk/user.deleted") {
       await User.findOneAndDelete({ clerkId: id });
-      console.log(`[Clerk Webhook] 유저 삭제 완료: ${id}`);
     }
 
     return res
       .status(200)
       .json({ success: true, message: "Webhook 처리 완료" });
   } catch (error) {
-    console.error("[handleClerkWebhook Error]:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -315,7 +306,8 @@ export const deleteAddress = async (req, res) => {
     if (address.isDefault) {
       return res.status(400).json({
         success: false,
-        message: "기본 배송지는 직접 삭제하실 수 없습니다 📍 다른 배송지를 먼저 기본 배송지로 설정하신 후 삭제해 주세요.",
+        message:
+          "기본 배송지는 직접 삭제하실 수 없습니다 📍 다른 배송지를 먼저 기본 배송지로 설정하신 후 삭제해 주세요.",
       });
     }
     user.addresses.pull(addressId);
@@ -379,7 +371,9 @@ export const deleteWishlist = async (req, res) => {
     const { productId } = req.params;
     const productIndex = user.wishList.findIndex(
       (product) =>
-        product && (product._id ? product._id.toString() : product.toString()) === productId,
+        product &&
+        (product._id ? product._id.toString() : product.toString()) ===
+          productId,
     );
     if (productIndex === -1) {
       return res.status(404).json({

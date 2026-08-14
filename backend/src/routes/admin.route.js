@@ -23,7 +23,6 @@ router.delete("/products/:productId", deleteProduct);
 
 router.get("/orders", getAllOrders);
 router.patch("/orders/:orderId/status", updateOrderStatus);
-router.put("/orders/:orderId/status", updateOrderStatus);
 
 router.get("/customers", getAllCustomers);
 

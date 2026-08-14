@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Product, Review } from '../../types';
+import { formatImageUrl } from '../../lib/productUtils';
 
 interface ReviewsModalProps {
   product: Product | null;
@@ -110,7 +111,7 @@ export const ReviewsModal: React.FC<ReviewsModalProps> = ({
                       (userObj &&
                         (userObj.name || userObj.email?.split('@')[0])) ||
                       '실제 구매자';
-                    const userImage = userObj?.imageUrl;
+                    const userImage = formatImageUrl(userObj?.imageUrl);
 
                     const revDate = new Date(
                       rev.createdAt || Date.now(),

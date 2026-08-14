@@ -160,8 +160,11 @@ export default function ShopScreen() {
 
   const { data: wishlist = [], refetch: refetchWishlist } = useWishlistQuery();
 
-  const wishlistIds = useMemo(
-    () => wishlist.map((item) => (typeof item === 'object' ? item._id : item)),
+  const wishlistSet = useMemo(
+    () =>
+      new Set(
+        wishlist.map((item) => (typeof item === 'object' ? item._id : item)),
+      ),
     [wishlist],
   );
 
@@ -234,7 +237,7 @@ export default function ShopScreen() {
 
   const handleToggleWishlist = useCallback(
     (productId: string) => {
-      const isWished = wishlistIds.includes(productId);
+      const isWished = wishlistSet.has(productId);
       toggleWishlistMutation.mutate(
         { productId, isWished },
         {
@@ -244,7 +247,7 @@ export default function ShopScreen() {
         },
       );
     },
-    [wishlistIds, toggleWishlistMutation],
+    [wishlistSet, toggleWishlistMutation],
   );
 
   const handleOpenReviewsModal = useCallback((product: Product) => {
@@ -274,13 +277,16 @@ export default function ShopScreen() {
     });
   }, [products, selectedCategory, debouncedSearchQuery]);
 
+  // 📄 FlatList KeyExtractor 메모이제이션
+  const keyExtractor = useCallback((item: Product) => item._id, []);
+
   // 📄 FlatList Item 렌더러
   const renderProductItem: ListRenderItem<Product> = useCallback(
     ({ item }) => (
       <ProductCard
         product={item}
-        isWished={wishlistIds.includes(item._id)}
-        failedImages={failedImages}
+        isWished={wishlistSet.has(item._id)}
+        isImageFailed={Boolean(failedImages[item._id])}
         onSelectProduct={setSelectedProduct}
         onToggleWishlist={handleToggleWishlist}
         onOpenReviews={handleOpenReviewsModal}
@@ -288,7 +294,7 @@ export default function ShopScreen() {
       />
     ),
     [
-      wishlistIds,
+      wishlistSet,
       failedImages,
       handleToggleWishlist,
       handleOpenReviewsModal,
@@ -327,9 +333,14 @@ export default function ShopScreen() {
       {/* 🚀 고성능 Virtualized FlatList 2열 그리드 연동 */}
       <FlatList
         data={filteredProducts}
-        keyExtractor={(item) => item._id}
+        keyExtractor={keyExtractor}
         numColumns={2}
         renderItem={renderProductItem}
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        windowSize={5}
+        removeClippedSubviews={true}
+        updateCellsBatchingPeriod={50}
         ListHeaderComponent={
           <ShopHeader
             searchQuery={searchQuery}
@@ -356,7 +367,7 @@ export default function ShopScreen() {
       <ProductDetailModal
         product={selectedProduct}
         isWished={
-          selectedProduct ? wishlistIds.includes(selectedProduct._id) : false
+          selectedProduct ? wishlistSet.has(selectedProduct._id) : false
         }
         isInCart={
           selectedProduct ? cartProductIds.includes(selectedProduct._id) : false

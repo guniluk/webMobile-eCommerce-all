@@ -1,26 +1,26 @@
-import { useState, useEffect } from "react";
-import { Show, useUser } from "@clerk/react";
-import { useMutation } from "@tanstack/react-query";
-import Sidebar from "./components/Sidebar";
-import Header from "./components/Header";
-import LoginView from "./components/LoginView";
-import DashboardPage from "./pages/DashboardPage";
-import ProductsPage from "./pages/ProductsPage";
-import OrdersPage from "./pages/OrdersPage";
-import CustomersPage from "./pages/CustomersPage";
-import LoadingSpinner from "./components/LoadingSpinner";
+import { useState, useEffect } from 'react';
+import { Show, useUser } from '@clerk/react';
+import { useMutation } from '@tanstack/react-query';
+import Sidebar from './components/Sidebar';
+import Header from './components/Header';
+import LoginView from './components/LoginView';
+import DashboardPage from './pages/DashboardPage';
+import ProductsPage from './pages/ProductsPage';
+import OrdersPage from './pages/OrdersPage';
+import CustomersPage from './pages/CustomersPage';
+import LoadingSpinner from './components/LoadingSpinner';
 
-import { syncUser as syncUserApiService } from "./services";
+import { syncUser as syncUserApiService } from './services';
 
 // services/userApi 기반 유저 동기화 연동
 const syncUserApi = async (user) => {
-  const email = user.primaryEmailAddress?.emailAddress || "";
+  const email = user.primaryEmailAddress?.emailAddress || '';
   const name =
     user.fullName ||
-    [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+    [user.firstName, user.lastName].filter(Boolean).join(' ') ||
     user.username ||
-    "User";
-  const imageUrl = user.imageUrl || "";
+    'User';
+  const imageUrl = user.imageUrl || '';
 
   try {
     return await syncUserApiService({
@@ -30,13 +30,13 @@ const syncUserApi = async (user) => {
       imageUrl,
     });
   } catch (error) {
-    console.error("[User Sync Error]", error);
+    console.error('[User Sync Error]', error);
     return null;
   }
 };
 
 const App = () => {
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const { isLoaded, isSignedIn, user } = useUser();
@@ -57,13 +57,13 @@ const App = () => {
 
   const renderActivePage = () => {
     switch (activeTab) {
-      case "dashboard":
+      case 'dashboard':
         return <DashboardPage setActiveTab={setActiveTab} />;
-      case "products":
+      case 'products':
         return <ProductsPage />;
-      case "orders":
+      case 'orders':
         return <OrdersPage />;
-      case "customers":
+      case 'customers':
         return <CustomersPage />;
       default:
         return <DashboardPage setActiveTab={setActiveTab} />;

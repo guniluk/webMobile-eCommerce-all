@@ -7,7 +7,7 @@ import { getProductImageSource } from '../../lib/productUtils';
 interface ProductCardProps {
   product: Product;
   isWished: boolean;
-  failedImages: Record<string, boolean>;
+  isImageFailed?: boolean;
   onSelectProduct: (product: Product) => void;
   onToggleWishlist: (productId: string) => void;
   onOpenReviews: (product: Product) => void;
@@ -17,7 +17,7 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = React.memo(function ProductCard({
   product,
   isWished,
-  failedImages,
+  isImageFailed = false,
   onSelectProduct,
   onToggleWishlist,
   onOpenReviews,
@@ -35,7 +35,10 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(function Produ
       {/* 🖼️ 상품 이미지 & 위시리스트 버튼 */}
       <View className="h-40 bg-slate-100 dark:bg-slate-700 relative justify-center items-center">
         <Image
-          source={getProductImageSource(product, failedImages)}
+          source={getProductImageSource(
+            product,
+            isImageFailed ? { [product._id]: true } : {},
+          )}
           onError={() => onImageError(product._id)}
           className="w-full h-full"
           resizeMode="cover"

@@ -120,19 +120,49 @@ const Header = ({
           })
         : "최근";
 
+      const orderId = ord._id ? String(ord._id) : "";
+      const orderNumber = orderId
+        ? `#ORD-${orderId.slice(-8).toUpperCase()}`
+        : "#ORD-UNKNOWN";
+      const customerName =
+        ord.shippingAddress?.fullName || ord.userId?.name || "고객";
+      const customerEmail =
+        ord.userId?.email || ord.paymentResult?.email_address || "";
+      const customerPhone = ord.shippingAddress?.phoneNumber || "";
+      const customerAddress = ord.shippingAddress
+        ? [
+            ord.shippingAddress.city,
+            ord.shippingAddress.state,
+            ord.shippingAddress.streetAddress,
+          ]
+            .filter(Boolean)
+            .join(" ")
+        : "";
+      const totalPrice = ord.totalPrice || 0;
+
+      const commonNotiData = {
+        orderId: ord._id,
+        orderNumber,
+        customerName,
+        customerEmail,
+        customerPhone,
+        customerAddress,
+        totalPrice,
+        orderProductNames: prodSummary,
+        createdAt: dateStr,
+      };
+
       // 1. 배송 완료 상태 변동 알림
       if (ord.isDelivered || ord.status === "delivered") {
         const notiId = `web-noti-delivered-${ord._id}`;
         notis.push({
+          ...commonNotiData,
           id: notiId,
-          orderId: ord._id,
           title: "배송 완료 📦",
           message: `주문하신 [${prodSummary}] 상품이 성공적으로 배송 완료되었습니다.`,
           type: "delivery_complete",
           statusBadge: "배송완료",
           read: readNotiIds.includes(notiId),
-          createdAt: dateStr,
-          orderProductNames: prodSummary,
         });
       }
 
@@ -140,15 +170,13 @@ const Header = ({
       if (ord.status === "shipped") {
         const notiId = `web-noti-shipped-${ord._id}`;
         notis.push({
+          ...commonNotiData,
           id: notiId,
-          orderId: ord._id,
           title: "배송 시작 🚚",
           message: `[${prodSummary}] 상품이 출고되어 택배 수송 중입니다.`,
           type: "delivery_start",
           statusBadge: "배송중",
           read: readNotiIds.includes(notiId),
-          createdAt: dateStr,
-          orderProductNames: prodSummary,
         });
       }
 
@@ -156,15 +184,13 @@ const Header = ({
       if (ord.isPaid || ord.status === "pending" || ord.status === "paid") {
         const notiId = `web-noti-paid-${ord._id}`;
         notis.push({
+          ...commonNotiData,
           id: notiId,
-          orderId: ord._id,
           title: "주문 및 결제 완료 💳",
           message: `[${prodSummary}] 주문 결제가 확인되어 배송을 준비 중입니다.`,
           type: "payment",
           statusBadge: "결제완료",
           read: readNotiIds.includes(notiId),
-          createdAt: dateStr,
-          orderProductNames: prodSummary,
         });
       }
     });

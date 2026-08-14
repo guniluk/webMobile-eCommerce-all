@@ -173,6 +173,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 {imageList.map((imgUrl, idx) => {
                   const tempProduct: Product = {
                     ...product,
+                    images: imgUrl === 'fallback' ? [] : [imgUrl],
                     image: imgUrl === 'fallback' ? undefined : imgUrl,
                   };
                   return (

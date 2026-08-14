@@ -12,8 +12,8 @@ export const CATEGORY_IMAGES: Record<string, ImageSourcePropType> = {
 /**
  * 🔒 이미지 URL 포맷팅 유틸리티
  * - relative path(/uploads/...)를 API 서버 URL과 결합
- * - http:// -> https:// 강제 전환 (iOS ATS 및 모바일 보안 대응)
- * - 이미 이중 인코딩되었거나 Cloudinary 변환 문자가 깨지지 않도록 안전한 URI 인코딩 처리
+ * - http:// -> https:// 강제 전환 (iOS ATS 및 Expo Go 모바일 보안 대응)
+ * - Cloudinary URL(cloudinary.com)은 이미 올바른 URL 형태이므로 훼손 없이 https 안전 전환 후 즉시 반환
  */
 export const formatImageUrl = (url?: string | null): string => {
   if (!url || typeof url !== 'string') return '';
@@ -39,11 +39,15 @@ export const formatImageUrl = (url?: string | null): string => {
     return `${cleanBase}${trimmed}`;
   }
 
-  // http:// 로 시작하는 경우 iOS ATS 및 모바일 보안을 위해 https:// 로 변환
+  // http:// 로 시작하는 경우 Expo Go / iOS ATS 보안을 위해 https:// 로 변환
   let secureUrl = trimmed.replace(/^http:\/\//i, 'https://');
 
-  // Cloudinary 및 일반 URL의 안전한 URI 인코딩 처리
-  // (이중 인코딩 방지를 위해 decodeURI 후 encodeURI 적용)
+  // Cloudinary CDN URL은 변형 없이 https 전환본 그대로 반환
+  if (secureUrl.includes('cloudinary.com')) {
+    return secureUrl;
+  }
+
+  // 기타 일반 외부 URL 안전 URI 인코딩 처리
   try {
     const decoded = decodeURI(secureUrl);
     secureUrl = encodeURI(decoded);
@@ -65,16 +69,24 @@ export const getProductImageSource = (
     return require('../assets/images/icon.png');
   }
 
-  // 이미지 로드에 이미 실패한 상품이면 카테고리 기본 이미지로 바로 폴백
-  if (product._id && failedImages[product._id]) {
-    const catKey = product.category?.toLowerCase() || '';
-    return CATEGORY_IMAGES[catKey] || require('../assets/images/icon.png');
+  // 1. 단일 image 필드가 지정된 경우 (상세 모달 슬라이더 등) 최우선 선택
+  let selectedUrl = '';
+  if (
+    product.image &&
+    typeof product.image === 'string' &&
+    product.image.trim() !== '' &&
+    !product.image.includes('placeholder')
+  ) {
+    selectedUrl = product.image;
   }
 
-  // 1. 유효한 온라인 이미지 URL 찾기 (images 배열 또는 image 필드)
-  let onlineUrl = '';
-  if (Array.isArray(product.images) && product.images.length > 0) {
-    onlineUrl =
+  // 2. images 배열에서 유효한 URL 탐색 (image 필드가 없는 경우)
+  if (
+    !selectedUrl &&
+    Array.isArray(product.images) &&
+    product.images.length > 0
+  ) {
+    selectedUrl =
       product.images.find(
         (img) =>
           img &&
@@ -84,18 +96,15 @@ export const getProductImageSource = (
       ) || '';
   }
 
-  if (!onlineUrl && product.image) {
-    onlineUrl = product.image;
-  }
+  // 3. URL 포맷팅 적용
+  const formattedUrl = formatImageUrl(selectedUrl);
 
-  // 2. URL 포맷팅 적용
-  const formattedUrl = formatImageUrl(onlineUrl);
-
-  if (formattedUrl) {
+  // 이미지 로드 실패 기록이 없고, 유효한 포맷팅 URL이 존재하는 경우 해당 URI 반환
+  if (formattedUrl && (!product._id || !failedImages[product._id])) {
     return { uri: formattedUrl };
   }
 
-  // 3. 포맷팅 가능한 URL이 없는 경우 카테고리 에셋으로 폴백
+  // 4. 실패했거나 URL이 없는 경우 카테고리 에셋으로 폴백
   const catKey = product.category?.toLowerCase() || '';
   if (CATEGORY_IMAGES[catKey]) {
     return CATEGORY_IMAGES[catKey];

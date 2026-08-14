@@ -74,7 +74,7 @@ const axiosInstance = create({
 });
 
 async function request<T>(
-  method: "GET" | "POST" | "PUT" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   endpoint: string,
   data?: any,
   token?: string | null,
@@ -405,7 +405,7 @@ export const api = {
     token: string | null,
   ): Promise<{ success: boolean; unreadCount: number }> =>
     request<{ success: boolean; unreadCount: number }>(
-      "PUT",
+      "PATCH",
       `/notifications/${notificationId}/read`,
       {},
       token,
@@ -415,7 +415,7 @@ export const api = {
     token: string | null,
   ): Promise<{ success: boolean; unreadCount: number }> =>
     request<{ success: boolean; unreadCount: number }>(
-      "PUT",
+      "PATCH",
       "/notifications/read-all",
       {},
       token,

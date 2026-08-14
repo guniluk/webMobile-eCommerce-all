@@ -1,114 +1,98 @@
-# ☁️ Render.com 클라우드 배포 & Keep-Alive 크론 초보자 완전 가이드
+# 🚀 Render.com 클라우드 자동 배포 가이드
 
-이 문서는 **Express.js 백엔드**와 **Vite React 프론트엔드**를 **Render.com** 무료 클라우드 인프라에 통합 배포하고 슬립(Sleep) 현상을 방지하는 전체 가이드입니다.
-
----
-
-## 📌 목차 (Table of Contents)
-1. [Render.com 배포 구조 및 개요](#1-rendercom-배포-구조-및-개요)
-2. [배포 준비: 백엔드 정적 서빙 세팅 ([server.js](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/backend/src/server.js))](#2-배포-준비-백엔드-정적-서빙-세팅)
-3. [Render 인프라 자동화 설정 (`render.yaml`)](#3-render-인프라-자동화-설정-renderyaml)
-4. [14분 주기 Self-Ping Keep-Alive 크론 연동](#4-14분-주기-self-ping-keep-alive-크론-연동)
-5. [Render 대시보드 배포 절차](#5-render-대시보드-배포-절차)
-6. [자주 하는 실수 & 검증 (Troubleshooting)](#6-자주-하는-실수--검증-troubleshooting)
+이 문서는 Node.js Express 백엔드 서버와 React Vite 웹 프론트엔드를 **Render.com** 클라우드 플랫폼에 자동으로 원클릭 배포하는 설정 및 실전 가이드입니다.
 
 ---
 
-## 1. Render.com 배포 구조 및 개요
-
-Render.com 무료 인스턴스는 일정 시간 요청이 없으면 서버가 **Sleep 모드**에 진입하여 첫 요청 시 약 50초간의 지연(Cold Start)이 발생합니다.
-본 프로젝트는 **1) 백엔드가 프론트엔드 빌드 결과물을 직접 정적 서빙하는 단일 웹 서비스 아키텍처**와 **2) 14분마다 자기 자신에게 HTTP 핑을 보내 수면을 방지하는 Self-Ping 크론**을 구축해 이를 완벽히 해결했습니다.
-
----
-
-## 2. 배포 준비: 백엔드 정적 서빙 세팅
-
-`backend/src/server.js` 파일에 프로덕션 환경(`NODE_ENV === "production"`)일 때 프론트엔드 빌드 결과물(`frontend/dist`)을 Express 정적 아티팩트로 서빙하는 코드를 포함시킵니다:
-
-```javascript
-import path from "path";
-
-if (process.env.NODE_ENV === "production") {
-  // Self-Ping 크론 시작
-  initKeepAlive();
-
-  const frontendDistPath = path.join(__dirname, "../../frontend/dist");
-  app.use(express.static(frontendDistPath));
-
-  app.use((req, res, next) => {
-    if (req.path.startsWith("/api")) return next();
-    res.sendFile(path.join(frontendDistPath, "index.html"));
-  });
-}
-```
+## 📌 목차
+1. [Render.com 배포 구조 및 `render.yaml`](#1-rendercom-배포-구조-및-renderyaml)
+2. [백엔드 (Node.js Express) 서비스 배포 설정](#2-백엔드-nodejs-express-서비스-배포-설정)
+3. [웹 프론트엔드 (React Vite) Static Site 배포 설정](#3-웹-프론트엔드-react-vite-static-site-배포-설정)
+4. [환경변수 (Environment Variables) 세팅 가이드](#4-환경변수-environment-variables-세팅-가이드)
+5. [⚠️ 배포 성공 검증 및 트러블슈팅](#5-️-배포-성공-검증-및-트러블슈팅)
 
 ---
 
-## 3. Render 인프라 자동화 설정 (`render.yaml`)
+## 1. Render.com 배포 구조 및 `render.yaml`
 
-프로젝트 루트 디렉터리에 `render.yaml` 파일을 작성하면 Blueprint 기능으로 인프라 생성이 자동화됩니다:
+프로젝트 루트 디렉터리의 [`render.yaml`](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/render.yaml) 파일은 백엔드 Web Service와 웹 Static Site를 한 번에 자동 프로비저닝할 수 있도록 설정되어 있습니다.
+
+`render.yaml`:
 
 ```yaml
 services:
+  # 🟢 Express 백엔드 Web Service
   - type: web
-    name: webmobile-ecommerce
+    name: webmobile-ecommerce-backend
     env: node
-    plan: free
-    buildCommand: "cd backend && npm install && cd ../frontend && npm install && npm run build"
-    startCommand: "cd backend && npm run start"
+    region: singapore
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 10000
-      - key: MONGODB_URI
-        sync: false
-      - key: STRIPE_SECRET_KEY
-        sync: false
-      - key: CLERK_SECRET_KEY
-        sync: false
+        value: 5000
+
+  # 💻 React Vite 웹 Static Site
+  - type: web
+    name: webmobile-ecommerce-frontend
+    env: static
+    region: singapore
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/dist
 ```
 
 ---
 
-## 4. 14분 주기 Self-Ping Keep-Alive 크론 연동
+## 2. 백엔드 (Node.js Express) 서비스 배포 설정
 
-`node-cron` 및 백엔드 유틸([cronKeepAlive.js](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/backend/src/utils/cronKeepAlive.js))을 통해 14분마다 `/api/health` 헬스체크 URL로 요청을 보냅니다.
-
-```javascript
-import cron from "node-cron";
-import https from "https";
-
-export const initKeepAlive = () => {
-  const SERVER_URL = process.env.RENDER_EXTERNAL_URL || "https://your-app.onrender.com";
-
-  cron.schedule("*/14 * * * *", () => {
-    https.get(`${SERVER_URL}/api/health`, (res) => {
-      console.log(`[Keep-Alive] Self-ping status: ${res.statusCode}`);
-    }).on("error", (err) => {
-      console.warn("[Keep-Alive Error]:", err.message);
-    });
-  });
-};
-```
+1. [Render Dashboard](https://dashboard.render.com/) 접속 후 **`New +`** ➔ **`Web Service`** 선택
+2. GitHub 저장소(`webMobile-eCommerce-all`) 연결
+3. 설정값 지정:
+   - **Root Directory**: `backend`
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+   - **Node Version**: 18.x 이상
 
 ---
 
-## 5. Render 대시보드 배포 절차
+## 3. 웹 프론트엔드 (React Vite) Static Site 배포 설정
 
-1. GitHub 레포지토리에 소스코드 커밋 & 푸시
-2. [Render.com 대시보드](https://dashboard.render.com) 접속 ➔ **`New +`** ➔ **`Blueprint`** 선택
-3. 해당 GitHub 레포지토리 연결
-4. `render.yaml` 설정 감지 확인 ➔ `MONGODB_URI`, `STRIPE_SECRET_KEY`, `CLERK_SECRET_KEY` 등 환경 변수 값 입력 후 **`Apply`** 클릭
+1. Render Dashboard에서 **`New +`** ➔ **`Static Site`** 선택
+2. 설정값 지정:
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm install && npm run build`
+   - **Publish Directory**: `dist`
+3. Single Page App(SPA) 라우팅을 위한 Rewrite Rule 설정:
+   - **Source**: `/*`
+   - **Destination**: `/index.html`
 
 ---
 
-## 6. 자주 하는 실수 & 검증 (Troubleshooting)
+## 4. 환경변수 (Environment Variables) 세팅 가이드
 
-| 현상 | 원인 | 해결 방법 |
-| :--- | :--- | :--- |
-| `Page Not Found` 404 에러 | SPA 캐치올 라우터 설정 미흡 | `server.js`에서 `/api` 이외의 GET 요청을 `index.html`로 sendFile 처리했는지 확인 |
-| 첫 접속 시 50초 딜레이 | Self-Ping 미작동 | Render 대시보드 환경변수에 `RENDER_EXTERNAL_URL` 지정 확인 |
+Render Dashboard의 백엔드 서비스 `Environment` 탭에 아래 환경변수를 등록해야 합니다:
+
+| 환경변수 Key | 설명 / 예시 값 |
+| :--- | :--- |
+| `MONGODB_URI` | `mongodb+srv://user:pass@cluster.mongodb.net/eCommerce` |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary 클라우드 명 |
+| `CLOUDINARY_API_KEY` | Cloudinary API Key |
+| `CLOUDINARY_API_SECRET` | Cloudinary API Secret |
+| `CLERK_PUBLISHABLE_KEY` | `pk_test_...` |
+| `CLERK_SECRET_KEY` | `sk_test_...` |
+| `STRIPE_PUBLISHABLE_KEY` | `pk_test_...` |
+| `STRIPE_SECRET_KEY` | `sk_test_...` |
+
+---
+
+## 5. ⚠️ 배포 성공 검증 및 트러블슈팅
+
+1. **상태 검사 (Health Check)**:
+   - 백엔드가 정상 배포되면 `https://webmobile-ecommerce-backend.onrender.com/api/products` 접속 시 HTTP 200 OK와 함께 상품 JSON 데이터가 반환되어야 합니다.
+2. **CORS 에러 발생 시**:
+   - `backend/src/server.js`의 `cors({ origin: '*' })` 설정을 확인하세요.
 
 ---
 

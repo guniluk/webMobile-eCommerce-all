@@ -1,6 +1,6 @@
-# 🔐 Clerk 인증(Authentication) 풀스택 (Web, Backend, Mobile) 초보자 완전 가이드
+# 🔐 Clerk 인증(Authentication) 풀스택 (Web, Backend, Mobile) 최신 가이드
 
-이 문서는 **Vite React 웹 프론트엔드**, **Express.js 백엔드**, 그리고 **Expo(React Native) 모바일 앱** 환경에서 **Clerk(클러크)** 인증 서비스를 손쉽게 적용하고 데이터베이스를 연동하는 완벽한 풀스택 실전 가이드입니다.
+이 문서는 **Vite React 웹 프론트엔드**, **Express.js 백엔드**, 그리고 **Expo(React Native) 모바일 앱** 환경에서 **Clerk(클러크)** 인증 서비스를 연동하고 3중 유저 데이터베이스 동기화를 구현하는 전체 가이드입니다.
 
 ---
 
@@ -24,15 +24,15 @@ Clerk은 소셜 로그인(구글, 카카오 등), 이메일 로그인, 세션 �
          │<───────────── 2. JWT 토큰 & 세션 발급 ────────────────────┤
          │                                                           │
          └────────────── 3. API 요청 (Authorization: Bearer Token) ──┼───► [ Express 백엔드 & MongoDB ]
-                                                                             │  4. clerkMiddleware()
-                                                                             │     토큰 검증 및 req.auth 주입
-                                                                             │  5. 3중 회원 데이터 동기화
+                                                                              │  4. clerkMiddleware()
+                                                                              │     토큰 검증 및 req.auth 주입
+                                                                              │  5. 3중 회원 데이터 동기화
 ```
 
 ### 💡 3중 회원 데이터 동기화 (Triple Sync System)
-사용자가 Clerk으로 로그인할 때 MongoDB에도 사용자 정보([User.js](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/backend/src/models/user.model.js))가 안전하게 생성/업데이트되어야 합니다:
+사용자가 Clerk으로 로그인할 때 MongoDB에도 사용자 정보([User.js](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/backend/src/models/user.model.js))가 안전하게 생성/업데이트됩니다:
 
-1. **클라이언트 자동 Sync (`/api/users/sync`)**: 웹/모바일 앱 접속 및 로그인 시 즉시 백엔드로 프로필을 전송하여 DB에 없으면 자동 생성(Upsert)
+1. **클라이언트 자동 Sync (`/api/users/sync`)**: 웹/모바일 앱 로그인 성공 직후 백엔드로 프로필을 전송하여 DB에 없으면 자동 생성(Upsert)
 2. **Inngest 백그라운드 Worker (`/api/inngest`)**: Clerk 웹훅 이벤트를 Inngest가 전달받아 비동기로 안전하게 반영
 3. **Direct Clerk Webhook (`/api/users/webhook`)**: 예비 직접 웹훅 수신 핸들러
 
@@ -41,9 +41,9 @@ Clerk은 소셜 로그인(구글, 카카오 등), 이메일 로그인, 세션 �
 ## 2. Clerk 회원가입 및 API Key 발급
 
 1. [Clerk 공식 홈페이지(clerk.com)](https://clerk.com) 접속 후 회원가입
-2. 대시보드에서 **`Add application`** 클릭 ➔ 애플리케이션 이름 입력 (예: `my-ecommerce-app`)
+2. 대시보드에서 **`Add application`** 클릭 ➔ 애플리케이션 이름 입력 (예: `webMobile-eCommerce`)
 3. 로그인 수단(Google, Email 등) 선택 ➔ **`Create application`**
-4. 발급된 2가지 API 키를 복사해둡니다:
+4. 발급된 API 키를 복사해둡니다:
    - **Publishable Key**: `pk_test_...` (웹/모바일 클라이언트용)
    - **Secret Key**: `sk_test_...` (백엔드 서버 전용)
 
@@ -197,7 +197,7 @@ export default function RootLayout() {
   return (
     <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
       <ClerkLoaded>
-        {/* 앱 메인 화면 */}
+        {/* 메인 라우트 */}
       </ClerkLoaded>
     </ClerkProvider>
   );

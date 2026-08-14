@@ -1,116 +1,109 @@
-# 🛡️ Sentry 에러 로깅 & 모니터링 초보자 완전 가이드
+# 🛡️ Sentry 실시간 에러 로깅 & 모니터링 가이드
 
-이 문서는 **Vite React 웹**, **Node.js Express 백엔드**, **Expo 모바일 앱** 환경에서 **Sentry(센트리)**를 연동하여 실시간 에러 트래킹 및 브레드크럼(Breadcrumb) 추적 시스템을 구축하는 가이드입니다.
-
----
-
-## 📌 목차 (Table of Contents)
-1. [Sentry 소개 & 추적 아키텍처](#1-sentry-소개--추적-아키텍처)
-2. [Sentry DSN 발급 및 계정 세팅](#2-sentry-dsn-발급-및-계정-세팅)
-3. [모바일 앱 (Expo) Sentry 적용 가이드 ([cart.tsx](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/mobile/app/(tabs)/cart.tsx))](#3-모바일-앱-expo-sentry-적용-가이드)
-4. [백엔드 (Node.js Express) Sentry 적용 가이드](#4-백엔드-nodejs-express-sentry-적용-가이드)
-5. [브레드크럼(Breadcrumbs) 및 맞춤형 에러 캡처](#5-브레드크럼breadcrumbs-및-맞춤형-에러-캡처)
-6. [자주 하는 실수 & 검증 (Troubleshooting)](#6-자주-하는-실수--검증-troubleshooting)
+이 문서는 **Vite React 웹 프론트엔드** 및 **Expo (React Native) 모바일 앱** 환경에서 **Sentry (v10.69.0 이상)**를 연동하여 실시간 모니터링, 결제/장바구니 브레드크럼(Breadcrumbs) 기록 및 에러 로깅을 처리하는 설정 가이드입니다.
 
 ---
 
-## 1. Sentry 소개 & 추적 아키텍처
-
-**Sentry**는 애플리케이션에서 발생하는 런타임 예외(Runtime Error), 네트워크 실패, 렌더링 붕괴(Crash)를 실시간으로 수집하고 어떤 유저가 어떤 조작 경로(Breadcrumb)를 거쳐 에러를 만났는지 시각화해 주는 모니터링 플랫폼입니다.
-
----
-
-## 2. Sentry DSN 발급 및 계정 세팅
-
-1. [Sentry.io](https://sentry.io) 회원가입 및 조직(Organization) 생성
-2. **`Projects`** ➔ **`Create Project`** ➔ 플랫폼 선택 (`React Native` / `Node` / `React`)
-3. 발급된 **DSN 주소** (`https://<key>@o<org>.ingest.sentry.io/<project>`) 복사
+## 📌 목차
+1. [Sentry 개요 및 DSN 발급](#1-sentry-개요-및-dsn-발급)
+2. [웹 프론트엔드 (React Vite) Sentry 연동](#2-웹-프론트엔드-react-vite-sentry-연동)
+3. [모바일 앱 (Expo React Native) Sentry 연동](#3-모바일-앱-expo-react-native-sentry-연동)
+4. [결제 & 체크아웃 브레드크럼 (Breadcrumbs) 활용](#4-결제--체크아웃-브레드크럼-breadcrumbs-활용)
+5. [에러 포착 테스트 및 대시보드 검증](#5-에러-포착-테스트-및-대시보드-검증)
 
 ---
 
-## 3. 모바일 앱 (Expo) Sentry 적용 가이드
+## 1. Sentry 개요 및 DSN 발급
 
-### 3.1 패키지 설치
+Sentry는 사용자의 브라우저나 모바일 앱에서 발생하는 예외(Exception), 네트워크 실패, 렌더링 에러를 캡처하여 개발자에게 실시간 알림과 스택 트레이스(Stack Trace)를 제공하는 모니터링 서비스입니다.
+
+1. [Sentry.io](https://sentry.io/) 가입 후 새 프로젝트 생성
+2. 발급된 **DSN (Data Source Name)** 복사:
+   `https://examplePublicKey@o0.ingest.sentry.io/0`
+
+---
+
+## 2. 웹 프론트엔드 (React Vite) Sentry 연동
+
+```bash
+cd frontend
+npm install @sentry/react
+```
+
+`frontend/src/main.jsx`:
+
+```jsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import * as Sentry from '@sentry/react';
+import App from './App';
+
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN,
+  integrations: [
+    Sentry.browserTracingIntegration(),
+    Sentry.replayIntegration(),
+  ],
+  tracesSampleRate: 1.0,
+});
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+```
+
+---
+
+## 3. 모바일 앱 (Expo React Native) Sentry 연동
 
 ```bash
 cd mobile
-npx expo install sentry-expo
+npx expo install @sentry/react-native
 ```
 
-### 3.2 Sentry 초기화 (`mobile/app/_layout.tsx`)
+`mobile/app/_layout.tsx`:
 
-```typescript
-import * as Sentry from 'sentry-expo';
+```tsx
+import * as Sentry from '@sentry/react-native';
 
 Sentry.init({
-  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || 'https://your-dsn@sentry.io/project',
-  enableInExpoDevelopment: true,
-  debug: false,
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  debug: __DEV__,
 });
 ```
 
 ---
 
-## 4. 백엔드 (Node.js Express) Sentry 적용 가이드
+## 4. 결제 & 체크아웃 브레드크럼 (Breadcrumbs) 활용
 
-### 4.1 패키지 설치
-
-```bash
-cd backend
-npm install @sentry/node
-```
-
-### 4.2 백엔드 에러 핸들러 미들웨어 적용 (`backend/src/server.js`)
-
-```javascript
-import * as Sentry from "@sentry/node";
-
-Sentry.init({ dsn: process.env.SENTRY_DSN });
-
-// 백엔드 라우터들 아래에 Sentry 에러 핸들러 배치
-app.use(Sentry.Handlers.errorHandler());
-
-app.use((err, req, res, next) => {
-  res.status(500).json({ message: "서버 내부 오류가 발생했습니다." });
-});
-```
-
----
-
-## 5. 브레드크럼(Breadcrumbs) 및 맞춤형 에러 캡처
-
-프로젝트의 결제 처리([cart.tsx](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/mobile/app/(tabs)/cart.tsx))와 같이 유저의 조작 기록과 예외를 정교하게 캡처하는 코드 예시입니다:
+사용자가 결제를 진행하는 주요 단계마다 디버깅을 위해 이벤트를 기록합니다. (`mobile/app/(tabs)/cart.tsx` 예시):
 
 ```typescript
-import * as Sentry from 'sentry-expo';
+import * as Sentry from '@sentry/react-native';
 
-// 1. 유저의 주요 이동 동선 기록 (Breadcrumb)
+// Sentry 결제 진행 브레드크럼 기록
 Sentry.addBreadcrumb({
   category: 'checkout',
-  message: 'User initiated PaymentSheet presentation',
+  message: 'Cart checkout process initiated',
   level: 'info',
+  data: {
+    itemCount: validCartItems.length,
+    finalTotal,
+  },
 });
-
-// 2. 결제 실패 시 선택적 예외 캡처 (유저의 단순 모달 취소 제외)
-if (presentError) {
-  if (presentError.code === 'Canceled') {
-    console.log('유저가 결제를 취소함');
-  } else {
-    Sentry.captureException(presentError, {
-      tags: { section: 'stripe_payment_sheet' },
-    });
-  }
-}
 ```
 
 ---
 
-## 6. 자주 하는 실수 & 검증 (Troubleshooting)
+## 5. 에러 포착 테스트 및 대시보드 검증
 
-| 현상 | 원인 | 해결 방법 |
-| :--- | :--- | :--- |
-| 개발 환경에서 에러 수집 안 됨 | `enableInExpoDevelopment` 옵션 false | `Sentry.init`에서 `enableInExpoDevelopment: true` 적용 확인 |
-| DSN 유효성 실패 | 올바르지 않은 DSN 문자열 | `.env`에 DSN이 정확하게 설정되었는지 확인 |
+의도적으로 에러를 발생시켜 Sentry 대시보드로 수신되는지 테스트합니다:
+
+```javascript
+try {
+  throw new Error('Sentry 실시간 에러 로깅 테스트!');
+} catch (error) {
+  Sentry.captureException(error);
+}
+```
 
 ---
 

@@ -168,10 +168,10 @@ export const createPaymentIntent = async (req, res) => {
         await User.findByIdAndUpdate(user._id, {
           $set: { stripeCustomerId: customerId },
         });
-      } catch (createCustErr) {
+      } catch (createCustomerError) {
         console.warn(
           "[Stripe Customer Create Warning]:",
-          createCustErr.message,
+          createCustomerError.message,
         );
         customerId = undefined;
       }

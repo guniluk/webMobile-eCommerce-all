@@ -1,6 +1,6 @@
 # ⚡ TanStack Query v5 (React Query) 실전 활용 가이드
 
-이 문서는 **Vite React 웹 프론트엔드** 및 **Expo (React Native) 모바일 앱** 환경에서 **TanStack Query (v5.101.4 이상)**를 사용하여 서버 상태(Server State) 관리, 자동 캐싱, 무효화(Invalidation), 최فا적 업데이트(Optimistic Update)를 구현하는 구축 가이드입니다.
+이 문서는 **Vite React 웹 프론트엔드** 및 **Expo (React Native) 모바일 앱** 환경에서 **TanStack Query (v5.101.4 이상)**를 사용하여 서버 상태(Server State) 관리, 자동 캐싱, 무효화(Invalidation), 최적화 업데이트를 구현하는 구축 가이드입니다.
 
 ---
 
@@ -17,7 +17,7 @@
 
 TanStack Query는 백엔드 API와의 데이터 동기화, 캐싱, 백그라운드 갱신, 에러 처리, 로딩 상태 관리를 라이프사이클에 맞추어 자동화해 주는 상태 관리 라이브러리입니다.
 
-- `useQuery`: 서버 데이터 Fetching 및 캐싱
+- `useQuery`: 서버 데이터 Fetching 및 자동 캐싱
 - `useMutation`: 데이터 생성/수정/삭제 요청 (CUD)
 - `queryClient.invalidateQueries()`: 데이터 변경 후 지정된 키의 캐시를 무효화하여 최신 데이터 자동 재조회
 
@@ -25,11 +25,10 @@ TanStack Query는 백엔드 API와의 데이터 동기화, 캐싱, 백그라운�
 
 ## 2. QueryClient 설정 (`App.jsx` / `_layout.tsx`)
 
-### 웹 프론트엔드 (`frontend/src/App.jsx`)
+### 웹 프론트엔드 ([App.jsx](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/frontend/src/App.jsx))
 
 ```jsx
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,8 +43,7 @@ const queryClient = new QueryClient({
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      {/* 라우터 및 메인 앱 */}
-      <ReactQueryDevtools initialIsOpen={false} />
+      {/* 메인 라우터 및 페이지 */}
     </QueryClientProvider>
   );
 }
@@ -55,7 +53,7 @@ export default function App() {
 
 ## 3. 주요 쿼리 훅 (`useQuery`) 작성 패턴
 
-[useProductsQuery.ts](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/mobile/hooks/useProductsQuery.ts) 예시:
+모바일 훅 ([useProductsQuery.ts](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/mobile/hooks/useProductsQuery.ts)) 예시:
 
 ```typescript
 import { useQuery } from '@tanstack/react-query';
@@ -73,7 +71,7 @@ export const useProductsQuery = (category?: string, search?: string) => {
 
 ## 4. 뮤테이션 훅 (`useMutation`) & 캐시 무효화 패턴
 
-주문 생성 후 장바구니 및 내 주문 목록 캐시 무효화:
+주문 생성 후 장바구니 및 내 주문 목록 캐시 무효화 예시:
 
 ```typescript
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -103,3 +101,4 @@ export const useCreateOrderMutation = () => {
 ---
 
 © Web & Mobile Fullstack E-Commerce Platform. All rights reserved.
+

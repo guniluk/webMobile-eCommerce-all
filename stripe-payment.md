@@ -1,6 +1,6 @@
 # 💳 Stripe 결제 & 주문 통합 시스템 완전 가이드
 
-이 문서는 **Express.js 백엔드**, **Vite React 웹**, 그리고 **Expo(React Native) 모바일 앱** 환경에서 **Stripe 결제 게이트웨이**를 연동하고, 서버 측 멱등성 가드(Idempotency Guard), 엄격한 배송지/금액 유효성 검증, 1대1 주문-알림 DB 동기화 시스템을 구현하는 전체 가이드입니다.
+이 문서는 **Express.js 백엔드**, **Vite React 웹**, 그리고 **Expo (React Native) 모바일 앱** 환경에서 **Stripe 결제 게이트웨이**를 연동하고, 서버 측 멱등성 가드(Idempotency Guard), 엄격한 배송지/금액 유효성 검증, 1대1 주문-알림 DB 동기화 시스템을 구현하는 전체 가이드입니다.
 
 ---
 
@@ -41,7 +41,7 @@
 
 ### 2.1 `createPaymentIntent` (서버 금액 및 배송지 검증)
 
-- **위치**: [`backend/src/controllers/payment.controller.js`](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/backend/src/controllers/payment.controller.js)
+- **위치**: [`payment.controller.js`](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/controllers/payment.controller.js)
 - **주요 기능**:
   - `shippingAddress` 6개 필수 필드(`fullName`, `streetAddress`, `city`, `state`, `zipCode`, `phoneNumber`)의 유효성 검증
   - 장바구니 상품 재고 확인 및 서버 측 배송비(10만원 이상 무료, 미만 3,000원) 및 세금(10%) 자동 산정
@@ -50,7 +50,7 @@
 
 ### 2.2 `createOrder` (원자적 재고 차감 및 멱등성 가드)
 
-- **위치**: [`backend/src/controllers/order.controller.js`](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/backend/src/controllers/order.controller.js)
+- **위치**: [`order.controller.js`](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/controllers/order.controller.js)
 - **주요 기능**:
   - **🛡️ 멱등성 이중 차감 방지 가드**: 동일한 `paymentResult.id` (Stripe PaymentIntent ID)로 요청이 재전송되더라도 이중 재고 차감 및 중복 주문 생성을 완벽 차단
   - **🛡️ 금액 및 배송지 엄격 검증**: 클라이언트 `totalPrice`가 서버에서 계산된 `calculatedTotalPrice`와 다르면 400 에러 처리
@@ -60,7 +60,7 @@
 
 ## 3. 모바일 앱 (Expo Stripe Native PaymentSheet) 연동
 
-`mobile/app/(tabs)/cart.tsx`:
+[cart.tsx](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/mobile/app/(tabs)/cart.tsx):
 
 ```typescript
 import { useStripe } from '@stripe/stripe-react-native';
@@ -108,7 +108,7 @@ React 웹에서는 `@stripe/react-stripe-js` 및 `@stripe/stripe-js`를 활용�
 
 ## 5. ⚠️ 결제 보안 및 이슈 트러블슈팅
 
-1. **`LIMIT_FILE_SIZE` 및 배송지 유효성 검증 오류**:
+1. **배송지 유효성 검증 오류**:
    - `shippingAddress`의 6개 필수 필드 중 하나라도 누락되면 400 에러와 함께 명확한 안내 메시지가 전달됩니다.
 2. **이중 결제 차감 방지**:
    - 동일한 PaymentIntent ID로 여러 번 요청이 오더라도 DB 가드에 의해 200 OK와 함께 기존 주문 정보를 안전하게 반환합니다.
@@ -118,3 +118,4 @@ React 웹에서는 `@stripe/react-stripe-js` 및 `@stripe/stripe-js`를 활용�
 ---
 
 © Web & Mobile Fullstack E-Commerce Platform. All rights reserved.
+

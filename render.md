@@ -15,7 +15,7 @@
 
 ## 1. Render.com 배포 구조 및 `render.yaml`
 
-프로젝트 루트 디렉터리의 [`render.yaml`](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/render.yaml) 파일은 백엔드 Web Service와 웹 Static Site를 한 번에 자동 프로비저닝할 수 있도록 설정되어 있습니다.
+프로젝트 루트 디렉터리의 [`render.yaml`](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/render.yaml) 파일은 백엔드 Web Service와 웹 Static Site를 한 번에 자동 프로비저닝할 수 있도록 설정되어 있습니다.
 
 `render.yaml`:
 
@@ -76,7 +76,7 @@ Render Dashboard의 백엔드 서비스 `Environment` 탭에 아래 환경변수
 
 | 환경변수 Key | 설명 / 예시 값 |
 | :--- | :--- |
-| `MONGODB_URI` | `mongodb+srv://user:pass@cluster.mongodb.net/eCommerce` |
+| `MONGODB_URI` | `mongodb+srv://<username>:<password>@cluster.mongodb.net/eCommerce` |
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary 클라우드 명 |
 | `CLOUDINARY_API_KEY` | Cloudinary API Key |
 | `CLOUDINARY_API_SECRET` | Cloudinary API Secret |
@@ -92,8 +92,9 @@ Render Dashboard의 백엔드 서비스 `Environment` 탭에 아래 환경변수
 1. **상태 검사 (Health Check)**:
    - 백엔드가 정상 배포되면 `https://webmobile-ecommerce-backend.onrender.com/api/products` 접속 시 HTTP 200 OK와 함께 상품 JSON 데이터가 반환되어야 합니다.
 2. **CORS 에러 발생 시**:
-   - `backend/src/server.js`의 `cors({ origin: '*' })` 설정을 확인하세요.
+   - `backend/src/server.js`의 `cors({ origin: true, credentials: true })` 설정을 확인하세요.
 
 ---
 
 © Web & Mobile Fullstack E-Commerce Platform. All rights reserved.
+

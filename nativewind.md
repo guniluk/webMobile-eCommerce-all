@@ -32,16 +32,14 @@ cd mobile
 npx expo install nativewind tailwindcss react-native-reanimated react-native-safe-area-context
 ```
 
-### 2.2 `tailwind.config.js` 작성
-
-`mobile/tailwind.config.js`:
+### 2.2 `tailwind.config.js` 작성 ([tailwind.config.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/mobile/tailwind.config.js))
 
 ```javascript
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ["./app/**/*.{js,jsx,ts,tsx}", "./components/**/*.{js,jsx,ts,tsx}"],
-  presets: [require("nativewind/preset")],
-  darkMode: "class",
+  content: ['./app/**/*.{js,jsx,ts,tsx}', './components/**/*.{js,jsx,ts,tsx}'],
+  presets: [require('nativewind/preset')],
+  darkMode: 'class',
   theme: {
     extend: {},
   },
@@ -49,23 +47,21 @@ module.exports = {
 };
 ```
 
-### 2.3 `babel.config.js` 및 `global.css` 설정
-
-`mobile/babel.config.js`:
+### 2.3 `babel.config.js` 및 `global.css` 설정 ([babel.config.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/mobile/babel.config.js))
 
 ```javascript
 module.exports = function (api) {
   api.cache(true);
   return {
     presets: [
-      ["babel-preset-expo", { jsxImportSource: "nativewind" }],
-      "nativewind/babel",
+      ['babel-preset-expo', { jsxImportSource: 'nativewind' }],
+      'nativewind/babel',
     ],
   };
 };
 ```
 
-`mobile/global.css`:
+`mobile/global.css` ([global.css](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/mobile/global.css)):
 ```css
 @tailwind base;
 @tailwind components;
@@ -76,7 +72,7 @@ module.exports = function (api) {
 
 ## 3. 메인 컴포넌트 클래스 패턴 & 실전 예시
 
-[ProductCard.tsx](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/mobile/components/shop/ProductCard.tsx) 컴포넌트의 NativeWind 실전 패턴:
+[ProductCard.tsx](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/mobile/components/shop/ProductCard.tsx) 컴포넌트의 NativeWind 실전 패턴:
 
 ```tsx
 import React from 'react';
@@ -116,7 +112,7 @@ export const ProductCard = ({ product, onSelect }) => {
 
 ## 4. 다크 모드 (Dark Mode) 적용 방법
 
-NativeWind v4는 `useColorScheme()` 훅을 통해 다크 모드를 제어합니다:
+NativeWind v4는 `useColorScheme()` 훅을 통해 다크 모드를 제어합니다 ([ThemeToggle.tsx](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/mobile/components/ThemeToggle.tsx)):
 
 ```tsx
 import { useColorScheme } from 'nativewind';
@@ -146,3 +142,4 @@ export function ThemeToggle() {
 ---
 
 © Web & Mobile Fullstack E-Commerce Platform. All rights reserved.
+

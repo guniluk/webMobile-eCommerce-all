@@ -85,22 +85,22 @@ const CustomersPage = () => {
   return (
     <div className="space-y-6">
       {/* Top Bar with Search & Customer Counter */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-base-100 border border-base-300 p-5 rounded-2xl shadow-xl">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-base-content/50 absolute left-3.5 top-1/2 -translate-y-1/2 z-10" />
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 bg-base-100 border border-base-300 p-4 sm:p-5 rounded-2xl shadow-xl">
+        <div className="relative flex-1 min-w-0 w-full sm:max-w-md">
+          <Search className="w-4 h-4 text-base-content/50 absolute left-3.5 top-1/2 -translate-y-1/2 z-10 pointer-events-none" />
           <input
             type="text"
             placeholder="이름 또는 이메일 검색..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="input input-sm input-bordered w-full bg-base-200 text-base-content text-xs pl-9 pr-4"
+            className="input input-sm input-bordered w-full min-w-0 bg-base-200 text-base-content text-sm sm:text-xs pl-9 pr-4 focus:outline-primary placeholder:text-base-content/40 transition-all"
           />
         </div>
 
-        <div className="text-xs text-base-content/70 font-medium flex items-center gap-1.5 self-end sm:self-auto">
+        <div className="text-xs text-base-content/70 font-medium flex items-center gap-1.5 self-end sm:self-auto shrink-0">
           <Users className="w-4 h-4 text-primary" />
           <span>전체 회원 수:</span>
-          <span className="badge badge-primary badge-sm font-bold px-2.5 py-0.5 mx-1">
+          <span className="badge badge-primary badge-sm font-bold px-2.5 py-0.5 mx-1 shadow-sm">
             {filteredCustomers.length}
           </span>
           <span>명</span>

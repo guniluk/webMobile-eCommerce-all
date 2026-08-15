@@ -51,7 +51,7 @@ export const formatImageUrl = (url?: string | null): string => {
   try {
     const decoded = decodeURI(secureUrl);
     secureUrl = encodeURI(decoded);
-  } catch (e) {
+  } catch {
     // decodeURI 실패시 변환된 secureUrl 그대로 사용
   }
 

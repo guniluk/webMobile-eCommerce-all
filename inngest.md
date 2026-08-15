@@ -7,7 +7,7 @@
 ## 📌 목차
 1. [Inngest 개요 및 작동 원리](#1-inngest-개요-및-작동-원리)
 2. [패키지 설치 및 환경 설정](#2-패키지-설치-및-환경-설정)
-3. [Inngest 클라이언트 & 함수 작성 (`src/inngest/`)](#3-inngest-클라이언트--함수-작성-srcinngest)
+3. [Inngest 클라이언트 & 함수 작성 (`src/config/inngest.js`)](#3-inngest-클라이언트--함수-작성)
 4. [Express 엔드포인트 연동 (`/api/inngest`)](#4-express-엔드포인트-연동-apiinngest)
 5. [로컬 Dev Server 테스트 및 검증](#5-로컬-dev-server-테스트-및-검증)
 
@@ -15,7 +15,7 @@
 
 ## 1. Inngest 개요 및 작동 원리
 
-Inngest는 큐(Queue), 워커(Worker) 인프라를 별도로 구축하지 않고도 HTTP 엔드포인트를 통해 비동기 이벤트를 재시도(Retry), 지연(Delay), 팬아웃(Fan-out) 처리할 수 있게 도와주는 Serverless 백그라운드 작업 플랫폼입니다.
+Inngest는 별도의 큐(Queue)나 Redis 인프라를 직접 구축하지 않고도 HTTP 엔드포인트를 통해 비동기 이벤트를 재시도(Retry), 지연(Delay), 팬아웃(Fan-out) 처리할 수 있게 해주는 서버리스 백그라운드 작업 플랫폼입니다.
 
 ```text
 [ Clerk / 외부 서비스 ] ─── 1. Webhook Event 발생 ───► [ Express 백엔드 (/api/inngest) ]
@@ -44,29 +44,24 @@ INNGEST_SIGNING_KEY=your_inngest_signing_key
 
 ---
 
-## 3. Inngest 클라이언트 & 함수 작성 (`src/inngest/`)
+## 3. Inngest 클라이언트 & 함수 작성
 
-### 3.1 클라이언트 정의 (`src/inngest/client.js`)
-
-```javascript
-import { Inngest } from "inngest";
-
-export const inngest = new Inngest({ id: "my-ecommerce-app" });
-```
-
-### 3.2 Clerk 유저 생성/수정 동기화 함수 (`src/inngest/functions.js`)
+백엔드 설정 파일 ([inngest.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/config/inngest.js)):
 
 ```javascript
-import { inngest } from "./client.js";
-import { User } from "../models/user.model.js";
+import { Inngest } from 'inngest';
+import { User } from '../models/user.model.js';
 
-export const syncUser = inngest.createFunction(
-  { id: "sync-user-from-clerk" },
-  { event: "clerk/user.created" },
+export const inngest = new Inngest({ id: 'web-mobile-ecommerce' });
+
+// 1. Clerk 유저 생성 이벤트 비동기 동기화
+export const syncUserCreation = inngest.createFunction(
+  { id: 'sync-user-from-clerk' },
+  { event: 'clerk/user.created' },
   async ({ event }) => {
     const { id, first_name, last_name, email_addresses, image_url } = event.data;
     const email = email_addresses?.[0]?.email_address;
-    const name = `${first_name || ""} ${last_name || ""}`.trim() || "고객";
+    const name = `${first_name || ''} ${last_name || ''}`.trim() || '고객';
 
     await User.findOneAndUpdate(
       { clerkId: id },
@@ -90,27 +85,30 @@ export const syncUser = inngest.createFunction(
 
 ## 4. Express 엔드포인트 연동 (`/api/inngest`)
 
-`backend/src/server.js`:
+백엔드 라우터 ([inngest.route.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/routes/inngest.route.js)) 및 서버 파일 ([server.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/server.js)):
 
 ```javascript
-import { serve } from "inngest/express";
-import { inngest } from "./inngest/client.js";
-import { syncUser } from "./inngest/functions.js";
+import { serve } from 'inngest/express';
+import { inngest, syncUserCreation } from '../config/inngest.js';
 
-app.use(
-  "/api/inngest",
+const router = express.Router();
+
+router.use(
+  '/',
   serve({
     client: inngest,
-    functions: [syncUser],
+    functions: [syncUserCreation],
   })
 );
+
+export default router;
 ```
 
 ---
 
 ## 5. 로컬 Dev Server 테스트 및 검증
 
-로컬 개발 환경에서는 Inngest Dev Server를 띄워 이벤트를 시뮬레이션할 수 있습니다:
+로컬 개발 환경에서는 Inngest Dev Server를 실행하여 이벤트를 시뮬레이션하고 추적할 수 있습니다:
 
 ```bash
 npx inngest-cli@latest dev -u http://localhost:5000/api/inngest
@@ -121,3 +119,4 @@ npx inngest-cli@latest dev -u http://localhost:5000/api/inngest
 ---
 
 © Web & Mobile Fullstack E-Commerce Platform. All rights reserved.
+

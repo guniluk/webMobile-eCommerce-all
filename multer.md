@@ -10,7 +10,7 @@
    - [2.1 필수 패키지 설치 & 환경변수 설정](#21-필수-패키지-설치--환경변수-설정)
    - [2.2 Multer 메모리 스토리지 및 Cloudinary 업로드 유틸 작성](#22-multer-메모리-스토리지-및-cloudinary-업로드-유틸-작성)
    - [2.3 라우터 & 컨트롤러 구현 (단일/다중 업로드)](#23-라우터--컨트롤러-구현-단일다중-업로드)
-   - [2.4 (보너스) Cloudinary 이미지 삭제 유틸](#24-보너스-cloudinary-이미지-삭제-유틸)
+   - [2.4 Cloudinary 이미지 삭제 유틸](#24-cloudinary-이미지-삭제-유틸)
 3. [프론트엔드 (React / Vanilla JS) 사용 절차](#3-프론트엔드-react--vanilla-js-사용-절차)
 4. [모바일 앱 (Expo Go) 이미지 렌더링 유틸 (`productUtils.ts`)](#4-모바일-앱-expo-go-이미지-렌더링-유틸-productutilsts)
 5. [⚠️ 개발 시 자주 발생하는 이슈 & 트러블슈팅](#5-️-개발-시-자주-발생하는-이슈--트러블슈팅)
@@ -42,6 +42,7 @@
 ### 2.1 필수 패키지 설치 & 환경변수 설정
 
 ```bash
+cd backend
 npm install multer cloudinary dotenv
 ```
 
@@ -56,7 +57,7 @@ CLOUDINARY_API_SECRET=your_api_secret
 
 ### 2.2 Multer 메모리 스토리지 및 Cloudinary 업로드 유틸 작성
 
-`backend/src/config/cloudinary.js`:
+백엔드 설정 파일 ([cloudinary.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/config/cloudinary.js)):
 
 ```javascript
 import { v2 as cloudinary } from 'cloudinary';
@@ -73,7 +74,7 @@ cloudinary.config({
 export default cloudinary;
 ```
 
-`backend/src/middleware/multer.middleware.js`:
+미들웨어 파일 ([multer.middleware.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/middleware/multer.middleware.js)):
 
 ```javascript
 import multer from 'multer';
@@ -105,10 +106,10 @@ export const uploadMultipleImages = multer({
 
 ### 2.3 라우터 & 컨트롤러 구현 (단일/다중 업로드)
 
-`backend/src/controllers/admin.controller.js`:
+컨트롤러 파일 ([admin.controller.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/controllers/admin.controller.js)):
 
 ```javascript
-import cloudinary from "../config/cloudinary.js";
+import cloudinary from '../config/cloudinary.js';
 
 const processImageUploads = async (req) => {
   const imageUrls = [];
@@ -116,9 +117,9 @@ const processImageUploads = async (req) => {
 
   if (files && files.length > 0) {
     const filePromises = files.map(async (file) => {
-      const dataUri = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+      const dataUri = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
       const result = await cloudinary.uploader.upload(dataUri, {
-        folder: "products",
+        folder: 'products',
       });
       return result.secure_url || result.url;
     });
@@ -131,7 +132,7 @@ const processImageUploads = async (req) => {
 
 ---
 
-### 2.4 (보너스) Cloudinary 이미지 삭제 유틸
+### 2.4 Cloudinary 이미지 삭제 유틸
 
 ```javascript
 export const deleteFromCloudinary = async (publicId) => {
@@ -161,9 +162,7 @@ const response = await axios.post('/api/admin/products', formData);
 
 ## 4. 모바일 앱 (Expo Go) 이미지 렌더링 유틸 (`productUtils.ts`)
 
-모바일 환경에서 Cloudinary URL이 이중 인코딩되거나 깨지지 않도록 방어해 주는 안전 유틸리티:
-
-`mobile/lib/productUtils.ts`:
+모바일 환경에서 Cloudinary URL이 이중 인코딩되거나 깨지지 않도록 방어해 주는 안전 유틸리티 ([productUtils.ts](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/mobile/lib/productUtils.ts)):
 
 ```typescript
 export const formatImageUrl = (url?: string | null): string => {
@@ -183,7 +182,7 @@ export const formatImageUrl = (url?: string | null): string => {
 
   try {
     return encodeURI(decodeURI(secureUrl));
-  } catch (e) {
+  } catch {
     return secureUrl;
   }
 };
@@ -203,3 +202,4 @@ export const formatImageUrl = (url?: string | null): string => {
 ---
 
 © Web & Mobile Fullstack E-Commerce Platform. All rights reserved.
+

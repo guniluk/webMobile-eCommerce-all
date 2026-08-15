@@ -107,9 +107,9 @@ export const NotificationTab: React.FC<NotificationTabProps> = React.memo(
         </View>
 
         {/* 알림 카드 리스트 */}
-        {notifications.map((noti) => {
+        {notifications.map((item) => {
           const getIconName = () => {
-            switch (noti.type) {
+            switch (item.type) {
               case 'payment':
                 return 'card-outline';
               case 'delivery':
@@ -122,10 +122,10 @@ export const NotificationTab: React.FC<NotificationTabProps> = React.memo(
           };
 
           const getIconColor = () => {
-            if (noti.title.includes('완료') || noti.statusBadge.includes('완료')) {
+            if (item.title.includes('완료') || item.statusBadge.includes('완료')) {
               return '#10b981'; // emerald
             }
-            if (noti.title.includes('출발') || noti.statusBadge.includes('배송')) {
+            if (item.title.includes('출발') || item.statusBadge.includes('배송')) {
               return '#0284c7'; // sky
             }
             return '#f59e0b'; // amber
@@ -133,11 +133,11 @@ export const NotificationTab: React.FC<NotificationTabProps> = React.memo(
 
           return (
             <TouchableOpacity
-              key={noti.id}
+              key={item.id}
               activeOpacity={0.8}
-              onPress={() => onMarkAsRead(noti.id)}
+              onPress={() => onMarkAsRead(item.id)}
               className={`rounded-2xl p-4 mb-3 border shadow-sm ${
-                noti.read
+                item.read
                   ? 'dark:bg-slate-800/60 bg-white/70 border-slate-200/80 dark:border-slate-800'
                   : 'dark:bg-slate-800 bg-white border-sky-500/30 dark:border-cyan-500/30'
               }`}
@@ -146,7 +146,7 @@ export const NotificationTab: React.FC<NotificationTabProps> = React.memo(
                 {/* 알림 아이콘 헤더 */}
                 <View
                   className={`p-2.5 rounded-xl mr-3 ${
-                    noti.read
+                    item.read
                       ? 'bg-slate-100 dark:bg-slate-700/60'
                       : 'bg-sky-500/10 dark:bg-cyan-500/20'
                   }`}
@@ -165,28 +165,28 @@ export const NotificationTab: React.FC<NotificationTabProps> = React.memo(
                       <Text
                         numberOfLines={1}
                         className={`text-xs font-extrabold ${
-                          noti.read
+                          item.read
                             ? 'dark:text-slate-300 text-slate-700'
                             : 'dark:text-white text-slate-900'
                         }`}
                       >
-                        {noti.title}
+                        {item.title}
                       </Text>
-                      {!noti.read && (
+                      {!item.read && (
                         <View className="w-2 h-2 rounded-full bg-sky-500 dark:bg-cyan-400 ml-1.5" />
                       )}
                     </View>
 
                     <View className="flex-row items-center">
                       <Text className="text-[10px] font-medium dark:text-slate-400 text-slate-500 mr-2">
-                        {noti.createdAt}
+                        {item.createdAt}
                       </Text>
                       {onDeleteNotification && (
                         <TouchableOpacity
                           activeOpacity={0.7}
                           onPress={(e) => {
                             e.stopPropagation();
-                            onDeleteNotification(noti.id);
+                            onDeleteNotification(item.id);
                           }}
                           className="p-0.5 rounded-full"
                         >
@@ -200,7 +200,7 @@ export const NotificationTab: React.FC<NotificationTabProps> = React.memo(
                     numberOfLines={2}
                     className="text-xs dark:text-slate-300 text-slate-600 leading-4 mt-0.5"
                   >
-                    {noti.message}
+                    {item.message}
                   </Text>
 
                   {/* 하단 뱃지 표시 */}
@@ -209,12 +209,12 @@ export const NotificationTab: React.FC<NotificationTabProps> = React.memo(
                       numberOfLines={1}
                       className="text-[11px] font-bold text-slate-400 dark:text-slate-500 flex-1 mr-2"
                     >
-                      {noti.orderProductNames || '주문 상품'}
+                      {item.orderProductNames || '주문 상품'}
                     </Text>
 
                     <View className="bg-sky-500/10 dark:bg-cyan-500/20 px-2 py-0.5 rounded-md border border-sky-500/20">
                       <Text className="text-[10px] font-bold text-sky-600 dark:text-cyan-400">
-                        {noti.statusBadge}
+                        {item.statusBadge}
                       </Text>
                     </View>
                   </View>

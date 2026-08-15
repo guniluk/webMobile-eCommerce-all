@@ -16,6 +16,25 @@
     "glassmorphic",
     "glassmorphism",
     "noti",
-    "notis"
+    "notis",
+    "ecommerce",
+    "Updation",
+    "nord",
+    "chatbox",
+    "chatbubbles",
+    "Subviews",
+    "worklets",
+    "webmobile",
+    "Flexbox"
+  ],
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.git/**",
+    "**/.vscode/**",
+    "**/package-lock.json",
+    "**/*.svg",
+    "backend/.env",
+    "frontend/.env"
   ]
 }

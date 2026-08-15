@@ -7,16 +7,17 @@ Node.js Express 백엔드, Cloud DB(MongoDB Atlas), Cloudinary 이미지 호스�
 
 ---
 
-## 📌 1. 프로젝트 개요 및 전체 구조
+## 📌 1. 프로젝트 개요 및 핵심 기능
 
 본 프로젝트는 최신 풀스택 아키텍처를 기반으로 설계되었습니다.
 
-- **안정적인 Stripe 결제 파이프라인**: 웹/모바일 결제창 승인 후 서버 멱등성(Idempotency) 가드가 적용된 직통 주문 생성 파이프라인
+- **안정적인 Stripe 결제 파이프라인**: 결제 승인 후 서버 멱등성(Idempotency) 가드가 적용된 직통 주문 생성 파이프라인
 - **엄격한 서버 측 데이터 검증**: 배송지 정보(`shippingAddress`) 6대 필수 필드 검증 및 클라이언트 `totalPrice` vs 서버 계산 금액 일관성 자동 검증
 - **일관된 1대1 알림(Notification) DB 연동**: 주문(`Order`) 1개당 단 하나의 알림 문서가 연결되어 배송 상태 변경 시 실시간 동기화 (RESTful `PATCH` 메서드 표준화)
 - **Multer MemoryStorage + Cloudinary CDN 연동**: 디스크 저장 없이 서버 메모리 버퍼 스트림을 통해 Cloudinary 호스팅 및 HTTPS 보안 URL 제공
 - **원자적 재고 관리 & N+1 최적화**: Mongoose 트랜잭션을 통한 결제 후 자동 재고 차감 및 Batch Read 쿼리 처리
 - **다단계 사용자 인증**: Clerk 기반 웹/모바일 SSO 및 JWT 보안 미들웨어 연동
+- **반응형 UI & 디바운스 검색**: 모바일에서도 글자가 잘리지 않는 반응형 검색바(`min-w-0`) 및 2글자 이상 입력 시 400ms 디바운스 필터링 적용
 
 ### 📁 디렉터리 구조
 
@@ -24,11 +25,11 @@ Node.js Express 백엔드, Cloud DB(MongoDB Atlas), Cloudinary 이미지 호스�
 webMobile-eCommerce-all/
  ├─ backend/                   # 🟢 Node.js Express 백엔드 서버
  │   ├─ src/
- │   │   ├─ config/           # DB & Cloudinary 연결 (connectDB.js, cloudinary.js)
+ │   │   ├─ config/           # DB, Inngest, Cloudinary 연결
  │   │   ├─ controllers/      # API 컨트롤러 (Order, Payment, Product, Cart, Notification 등)
  │   │   ├─ middleware/       # Clerk Auth, Admin, Multer 미들웨어
  │   │   ├─ models/           # Mongoose DB 스키마 (User, Product, Order, Cart, Notification 등)
- │   │   ├─ routes/           # RESTful API 라우터 (RESTful PATCH 표준화)
+ │   │   ├─ routes/           # RESTful API 라우터
  │   │   ├─ utils/            # notification.js 등 공통 유틸리티
  │   │   └─ server.js         # 백엔드 서버 진입점
  │   ├─ seed.js               # 초기 데이터베이스 시드 스크립트
@@ -46,7 +47,7 @@ webMobile-eCommerce-all/
      ├─ app/                  # Expo Router 파일 기반 라우팅 ((tabs), (auth))
      ├─ components/           # ProductCard, WishlistTab, Header 등
      ├─ hooks/                # TanStack React Query 커스텀 훅
-     ├─ lib/                  # Axios/Fetch API 클라이언트 (api.ts) & productUtils.ts (Cloudinary URL 보안)
+     ├─ lib/                  # Axios/Fetch API 클라이언트 (api.ts) & productUtils.ts
      └─ app.json              # Expo & Stripe 플러그인 설정
 ```
 
@@ -54,7 +55,7 @@ webMobile-eCommerce-all/
 
 ## 🛠️ 2. 사전 준비 및 환경 세팅
 
-프로젝트 시작 전 아래 개발 도구 및 서비스 계정이 필요합니다.
+프로젝트 시작 전 아래 서비스 계정 및 환경이 필요합니다.
 
 1. **Node.js**: v18.x 이상 설치
 2. **MongoDB Atlas**: 무료 클러스터 생성 및 `MONGODB_URI` 발급
@@ -63,12 +64,6 @@ webMobile-eCommerce-all/
 5. **Stripe 계정**: 테스트용 `Publishable Key` & `Secret Key` 발급
 
 ---
-
-## 🟢 Step 1: 백엔드(Backend) 구축 순서
-
-### 1.1 프로젝트 초기화 및 패키지 설치
-
-`backend` 디렉터리를 만들고 필수 패키지를 설치합니다.
 
 ```bash
 cd backend
@@ -112,28 +107,28 @@ STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
 
 ### 1.3 DB 스키마 정의 (`src/models/`)
 
-1. **[Product.js](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/backend/src/models/product.model.js)**: 상품명, 가격, 재고(`stock`), 카테고리(`books`, `electronics`, `fashion`, `home`, `sports`), 이미지 URL 관리
-2. **[Order.js](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/backend/src/models/order.model.js)**: 주문 상품 목록, 배송지 주소(`fullName`, `streetAddress`, `city`, `state`, `zipCode`, `phoneNumber`), 결제 결과(`paymentResult`), 배송 상태(`pending`, `processing`, `shipped`, `delivered`, `cancelled`)
-3. **[Notification.js](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/backend/src/models/notification.model.js)**: `orderId` 필드에 `unique: true, sparse: true`를 부여하여 1대1 주문-알림 연결
-4. **[Cart.js](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/backend/src/models/cart.model.js)** & **[User.js](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/backend/src/models/user.model.js)**: 장바구니 및 유저 프로필/위시리스트
+1. **[Product.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/models/product.model.js)**: 상품명, 가격, 재고(`stock`), 카테고리(`books`, `electronics`, `fashion`, `home`, `sports`), 이미지 URL 관리
+2. **[Order.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/models/order.model.js)**: 주문 상품 목록, 배송지 주소(`fullName`, `streetAddress`, `city`, `state`, `zipCode`, `phoneNumber`), 결제 결과(`paymentResult`), 배송 상태(`pending`, `processing`, `shipped`, `delivered`, `cancelled`)
+3. **[Notification.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/models/notification.model.js)**: `orderId` 필드에 `unique: true, sparse: true`를 부여하여 1대1 주문-알림 연결
+4. **[Cart.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/models/cart.model.js)** & **[User.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/models/user.model.js)**: 장바구니 및 유저 프로필/위시리스트
 
 ### 1.4 DB 연결 & 알림 유틸 구현 (`src/config/`, `src/utils/`)
 
-- `src/config/connectDB.js`: Mongoose `connect()`로 MongoDB Atlas에 연결
-- `src/config/cloudinary.js`: Cloudinary SDK 설정
-- `src/utils/notification.js`: `createOrderNotification()` 구현. 주문 생성/상태 변경 시 `findOneAndUpdate`로 알림 문서 생성 및 실시간 갱신
+- [connectDB.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/config/connectDB.js): Mongoose `connect()`로 MongoDB Atlas에 연결
+- [cloudinary.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/config/cloudinary.js): Cloudinary SDK 설정
+- [notification.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/utils/notification.js): `createOrderNotification()` 구현. 주문 생성/상태 변경 시 `findOneAndUpdate`로 알림 문서 생성 및 실시간 갱신
 
 ### 1.5 핵심 컨트롤러 작성 (`src/controllers/`)
 
-- **[payment.controller.js](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/backend/src/controllers/payment.controller.js)**:
+- **[payment.controller.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/controllers/payment.controller.js)**:
   - `createPaymentIntent`: 서버 측에서 재고 및 주문 금액을 재검증 후 Stripe `clientSecret`과 `paymentIntentId` 발급. `shippingAddress` 필수 항목 검증.
-- **[order.controller.js](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/backend/src/controllers/order.controller.js)**:
+- **[order.controller.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/controllers/order.controller.js)**:
   - `createOrder`: Stripe 결제 성공 승인 후 클라이언트가 호출하는 직통 주문 처리 함수
   - **🛡️ 멱등성 가드**: 동일한 Stripe PaymentIntent ID로 중복 등록 시 이중 차감 및 중복 주문 방지
   - **📦 원자적 재고 차감**: MongoDB Session/Transaction으로 재고 차감 + 주문 생성 + 카트 비우기를 한 번에 실행
   - **🛡️ 엄격한 유효성 검증**: `shippingAddress` 6개 필수 필드 및 `totalPrice` 일치 검증
 
-### 1.6 API 라우터 & 서버 진입점 (`src/server.js`)
+### 1.6 API 라우터 & 서버 진입점 ([server.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/backend/src/server.js))
 
 ```javascript
 app.use("/api/products", productRoute);
@@ -151,15 +146,14 @@ app.use("/api/notifications", notificationRoute);
 
 ```bash
 cd ../frontend
-npx create-vite@latest ./ --template react
-npm install @clerk/react @tanstack/react-query zustand react-router-dom lucide-react axios daisyui tailwindcss postcss autoprefixer
+npm install
 ```
 
 ### 2.2 카테고리 동기화 및 관리자 페이지 구축
 
-1. **[ProductsPage.jsx](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/frontend/src/pages/ProductsPage.jsx)**:
+1. **[ProductsPage.jsx](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/frontend/src/pages/ProductsPage.jsx)**:
    - 카테고리 필터: `ALL`, `Books`, `Electronics`, `Fashion`, `Home & Living`, `Sports` (모바일과 100% 동일한 비구분 검색 적용)
-2. **[OrdersPage.jsx](file:///Users/guniluk/Desktop/CODING/webMobile-eCommerce-all/frontend/src/pages/OrdersPage.jsx)**:
+2. **[OrdersPage.jsx](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/frontend/src/pages/OrdersPage.jsx)**:
    - 주문 목록 조회 및 배송 상태(`shipped`, `delivered` 등) 변경 시 백엔드를 통해 1대1 알림 자동 업데이트
 
 ---

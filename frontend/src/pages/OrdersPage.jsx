@@ -49,11 +49,13 @@ const OrdersPage = () => {
 
   const handleStatusChange = useCallback(
     (orderId, newStatus) => {
-      if (window.confirm(`주문 상태를 '${newStatus}'(으)로 변경하시겠습니까?`)) {
+      if (
+        window.confirm(`주문 상태를 '${newStatus}'(으)로 변경하시겠습니까?`)
+      ) {
         updateStatusMutation.mutate({ orderId, status: newStatus });
       }
     },
-    [updateStatusMutation]
+    [updateStatusMutation],
   );
 
   const filteredOrders = useMemo(() => {
@@ -78,21 +80,30 @@ const OrdersPage = () => {
   return (
     <div className="space-y-6">
       {/* Top Filter Bar */}
-      <div className="flex items-center justify-between bg-base-100 border border-base-300 p-5 rounded-2xl shadow-xl">
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-primary" />
-          <span className="text-xs font-bold text-base-content/80 uppercase tracking-wider">
-            Filter Status:
-          </span>
-          <div className="join ml-2">
-            {['ALL', 'pending', 'processing', 'shipped', 'delivered', 'cancelled'].map((st) => (
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-base-100 border border-base-300 p-4 sm:p-5 rounded-2xl shadow-xl">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Filter className="w-4 h-4 text-primary" />
+            <span className="text-xs font-bold text-base-content/80 uppercase tracking-wider">
+              Filter:
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              'ALL',
+              'pending',
+              'processing',
+              'shipped',
+              'delivered',
+              'cancelled',
+            ].map((st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={`btn btn-xs join-item uppercase font-bold ${
+                className={`btn btn-xs uppercase font-bold rounded-lg transition-all ${
                   statusFilter === st
-                    ? 'btn-primary'
-                    : 'btn-ghost text-base-content/60'
+                    ? 'btn-primary shadow-sm'
+                    : 'btn-ghost text-base-content/70 hover:bg-base-200'
                 }`}
               >
                 {st}
@@ -101,9 +112,9 @@ const OrdersPage = () => {
           </div>
         </div>
 
-        <div className="text-xs text-base-content/70 font-medium flex items-center gap-1.5">
+        <div className="text-xs text-base-content/70 font-medium flex items-center gap-1.5 self-end sm:self-auto shrink-0">
           <span>총</span>
-          <span className="badge badge-primary badge-sm font-bold px-2.5 py-0.5 mx-1">
+          <span className="badge badge-primary badge-sm font-bold px-2.5 py-0.5 mx-1 shadow-sm">
             {filteredOrders.length}
           </span>
           <span>건의 주문</span>
@@ -190,13 +201,23 @@ const OrdersPage = () => {
                             handleStatusChange(order._id, e.target.value)
                           }
                           disabled={updateStatusMutation.isPending}
-                          className="select select-bordered select-xs bg-base-200 text-base-content font-bold cursor-pointer"
+                          className="select select-bordered select-xs bg-base-200 text-base-content  text-[8px] font-bold cursor-pointer"
                         >
-                          <option value="pending">pending (주문접수)</option>
-                          <option value="processing">processing (배송준비)</option>
-                          <option value="shipped">shipped (배송중)</option>
-                          <option value="delivered">delivered (배송완료)</option>
-                          <option value="cancelled">cancelled (주문취소)</option>
+                          <option value="pending" className="text-sm">
+                            pending
+                          </option>
+                          <option value="processing" className="text-sm">
+                            processing
+                          </option>
+                          <option value="shipped" className="text-sm">
+                            shipped
+                          </option>
+                          <option value="delivered" className="text-sm">
+                            delivered
+                          </option>
+                          <option value="cancelled" className="text-sm">
+                            cancelled
+                          </option>
                         </select>
                       </td>
                     </tr>

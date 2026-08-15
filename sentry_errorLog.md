@@ -30,7 +30,7 @@ cd frontend
 npm install @sentry/react
 ```
 
-`frontend/src/main.jsx`:
+`frontend/src/main.jsx` ([main.jsx](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/frontend/src/main.jsx)):
 
 ```jsx
 import React from 'react';
@@ -59,7 +59,7 @@ cd mobile
 npx expo install @sentry/react-native
 ```
 
-`mobile/app/_layout.tsx`:
+`mobile/app/_layout.tsx` ([_layout.tsx](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/mobile/app/_layout.tsx)):
 
 ```tsx
 import * as Sentry from '@sentry/react-native';
@@ -74,7 +74,7 @@ Sentry.init({
 
 ## 4. 결제 & 체크아웃 브레드크럼 (Breadcrumbs) 활용
 
-사용자가 결제를 진행하는 주요 단계마다 디버깅을 위해 이벤트를 기록합니다. (`mobile/app/(tabs)/cart.tsx` 예시):
+사용자가 결제를 진행하는 주요 단계마다 디버깅을 위해 이벤트를 기록합니다. ([cart.tsx](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/mobile/app/(tabs)/cart.tsx) 예시):
 
 ```typescript
 import * as Sentry from '@sentry/react-native';
@@ -108,3 +108,4 @@ try {
 ---
 
 © Web & Mobile Fullstack E-Commerce Platform. All rights reserved.
+

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@clerk/react';
 import {
@@ -11,15 +11,39 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ProductModal from '../components/ProductModal';
 import EmptyState from '../components/EmptyState';
 import { formatCurrency } from '../lib/util';
-import { Plus, Edit, Trash2, Search, PackageSearch } from 'lucide-react';
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Search,
+  PackageSearch,
+  Loader2,
+} from 'lucide-react';
 
 const ProductsPage = () => {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+
+  // ⏱️ 검색어 디바운스 중인지 여부를 파생 상태(Derived State)로 계산
+  const isDebouncing =
+    searchTerm.trim().length >= 2 && searchTerm.trim() !== debouncedSearchTerm;
+
+  // ⏱️ 글자가 2개 이상일 때 400ms 지연 디바운스, 2글자 미만일 때 즉시 초기화
+  useEffect(() => {
+    const trimmed = searchTerm.trim();
+    const delay = trimmed.length >= 2 ? 400 : 0;
+
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(trimmed.length >= 2 ? trimmed : '');
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const {
     data: products,
@@ -108,17 +132,21 @@ const ProductsPage = () => {
     setIsModalOpen(false);
   }, []);
 
+
+
   const filteredProducts = useMemo(() => {
+    const trimmedSearch = debouncedSearchTerm.toLowerCase();
     return (products || []).filter((product) => {
       const matchesSearch =
-        product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.category?.toLowerCase().includes(searchTerm.toLowerCase());
+        !trimmedSearch ||
+        product.name?.toLowerCase().includes(trimmedSearch) ||
+        product.category?.toLowerCase().includes(trimmedSearch);
       const matchesCategory =
         selectedCategory === 'ALL' ||
         product.category?.toLowerCase() === selectedCategory.toLowerCase();
       return matchesSearch && matchesCategory;
     });
-  }, [products, searchTerm, selectedCategory]);
+  }, [products, debouncedSearchTerm, selectedCategory]);
 
   if (isLoading)
     return (
@@ -138,23 +166,28 @@ const ProductsPage = () => {
   return (
     <div className="space-y-6">
       {/* Action Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-base-100 border border-base-300 p-5 rounded-2xl shadow-xl">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
-            <Search className="w-4 h-4 text-base-content/50 absolute left-3.5 top-1/2 -translate-y-1/2 z-10" />
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4 bg-base-100 border border-base-300 p-4 sm:p-5 rounded-2xl shadow-xl">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
+          {/* Search Bar */}
+          <div className="relative flex-1 min-w-0 w-full sm:max-w-md">
+            <Search className="w-4 h-4 text-base-content/50 absolute left-3.5 top-1/2 -translate-y-1/2 z-10 pointer-events-none" />
             <input
               type="text"
-              placeholder="상품명 또는 카테고리 검색..."
+              placeholder="상품명 또는 카테고리 검색 (2글자 이상)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="input input-sm input-bordered w-full bg-base-200 text-base-content text-xs pl-9 pr-4"
+              className="input input-sm input-bordered w-full min-w-0 bg-base-200 text-base-content text-sm sm:text-xs pl-9 pr-9 focus:outline-primary placeholder:text-base-content/40 transition-all"
             />
+            {isDebouncing && (
+              <Loader2 className="w-4 h-4 text-primary animate-spin absolute right-3 top-1/2 -translate-y-1/2" />
+            )}
           </div>
 
+          {/* Category Filter */}
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="select select-sm select-bordered bg-base-200 text-base-content text-xs"
+            className="select select-sm select-bordered bg-base-200 text-base-content text-sm sm:text-xs w-full sm:w-auto shrink-0 focus:outline-primary"
           >
             <option value="ALL">전체 카테고리</option>
             <option value="Books">Books</option>
@@ -165,9 +198,10 @@ const ProductsPage = () => {
           </select>
         </div>
 
+        {/* Create Product Button */}
         <button
           onClick={handleOpenCreateModal}
-          className="btn btn-primary btn-sm text-primary-content gap-2 font-bold shadow-lg shadow-primary/20 cursor-pointer w-full sm:w-auto"
+          className="btn btn-primary btn-sm text-primary-content gap-2 font-bold shadow-lg shadow-primary/20 cursor-pointer w-full sm:w-auto shrink-0 justify-center"
         >
           <Plus className="w-4 h-4" />
           <span>신규 상품 등록</span>
@@ -184,9 +218,14 @@ const ProductsPage = () => {
           <span className="badge badge-primary badge-sm font-extrabold px-2.5 py-2 shadow-sm text-xs">
             전체 {(products?.length || 0).toLocaleString()}개
           </span>
-          {(searchTerm.trim() || selectedCategory !== 'ALL') && (
+          {(debouncedSearchTerm || selectedCategory !== 'ALL') && (
             <span className="text-xs text-base-content/60 font-medium">
               (조회 결과: {filteredProducts.length.toLocaleString()}개)
+            </span>
+          )}
+          {searchTerm.trim().length === 1 && (
+            <span className="text-xs text-warning font-medium">
+              * 2글자 이상 입력 시 검색됩니다
             </span>
           )}
         </div>

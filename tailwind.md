@@ -29,7 +29,7 @@ cd frontend
 npm install tailwindcss @tailwindcss/vite
 ```
 
-### 2.2 `vite.config.js` 설정
+### 2.2 `vite.config.js` 설정 ([vite.config.js](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/frontend/vite.config.js))
 
 ```javascript
 import { defineConfig } from 'vite';
@@ -41,7 +41,7 @@ export default defineConfig({
 });
 ```
 
-### 2.3 `index.css` 작성
+### 2.3 `index.css` 작성 ([index.css](file:///Users/guniluk/Desktop/CLI/webMobile-eCommerce-all/frontend/src/index.css))
 
 ```css
 @import "tailwindcss";
@@ -56,16 +56,18 @@ export default defineConfig({
 | :--- | :--- | :--- |
 | **Grid 반응형 레이아웃** | `grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6` | 화면 크기별 카드 그리드 |
 | **Flexbox 동적 정렬** | `flex items-center justify-between gap-4` | 양끝 정렬 및 요소 간격 |
-| **카드 & 컨테이너** | `bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200` | 컨테이너 카드 디자인 |
-| **텍스트 & 타이포그래피**| `text-sm font-bold text-slate-900 dark:text-white` | 텍스트 스타일링 |
+| **카드 & 컨테이너** | `bg-base-100 border border-base-300 rounded-2xl shadow-xl p-5` | 테마 연동 컨테이너 카드 디자인 |
+| **반응형 너비 & 줄임 방지**| `min-w-0 flex-1 w-full sm:max-w-md` | 모바일 텍스트 찌그러짐 방지 |
+| **텍스트 & 타이포그래피**| `text-sm font-bold text-base-content` | 시맨틱 텍스트 스타일링 |
 
 ---
 
 ## 4. 모바일 앱 (NativeWind)과 클래스 호환성
 
 - 모바일 앱에서는 `View`, `Text`, `Image`, `TouchableOpacity` 컴포넌트의 `className`에 Tailwind 클래스를 적용합니다.
-- `w-[48%]`, `flex-1`, `flex-row`, `dark:bg-slate-800` 등 100% 동등한 클래스를 공유합니다.
+- `w-[48%]`, `flex-1`, `flex-row`, `dark:bg-slate-800` 등 동일한 유틸리티 클래스를 공유합니다.
 
 ---
 
 © Web & Mobile Fullstack E-Commerce Platform. All rights reserved.
+

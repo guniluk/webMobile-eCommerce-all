@@ -1,4 +1,4 @@
-import axiosInstance from "../lib/axios";
+import axiosInstance from '../lib/axios';
 
 /**
  * Clerk Auth Token을 가져와 HTTP 요청 헤더 객체를 생성하는 헬퍼 함수
@@ -11,10 +11,10 @@ export const getHeaders = async (getToken) => {
     try {
       const token = await getToken();
       if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
+        headers['Authorization'] = `Bearer ${token}`;
       }
     } catch (e) {
-      console.warn("[API Helper] Failed to acquire Auth token:", e);
+      console.warn('[API Helper] Failed to acquire Auth token:', e);
     }
   }
   return headers;

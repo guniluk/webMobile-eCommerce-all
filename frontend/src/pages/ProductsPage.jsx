@@ -1,23 +1,23 @@
-import { useState, useMemo, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@clerk/react";
+import { useState, useMemo, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@clerk/react';
 import {
   fetchProducts,
   createProduct,
   updateProduct,
   deleteProduct,
-} from "../services";
-import LoadingSpinner from "../components/LoadingSpinner";
-import ProductModal from "../components/ProductModal";
-import EmptyState from "../components/EmptyState";
-import { formatCurrency } from "../lib/util";
-import { Plus, Edit, Trash2, Search, PackageSearch } from "lucide-react";
+} from '../services';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ProductModal from '../components/ProductModal';
+import EmptyState from '../components/EmptyState';
+import { formatCurrency } from '../lib/util';
+import { Plus, Edit, Trash2, Search, PackageSearch } from 'lucide-react';
 
 const ProductsPage = () => {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("ALL");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 
@@ -27,17 +27,17 @@ const ProductsPage = () => {
     isError,
     error,
   } = useQuery({
-    queryKey: ["adminProducts"],
+    queryKey: ['adminProducts'],
     queryFn: () => fetchProducts(getToken),
   });
 
   const createMutation = useMutation({
     mutationFn: (productData) => createProduct({ productData, getToken }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["adminProducts"] });
-      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
+      queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
+      queryClient.invalidateQueries({ queryKey: ['adminStats'] });
       setIsModalOpen(false);
-      alert("상품이 성공적으로 등록되었습니다!");
+      alert('상품이 성공적으로 등록되었습니다!');
     },
     onError: (err) => {
       alert(`상품 등록 실패: ${err.message}`);
@@ -48,11 +48,11 @@ const ProductsPage = () => {
     mutationFn: ({ productId, productData }) =>
       updateProduct({ productId, productData, getToken }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["adminProducts"] });
-      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
+      queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
+      queryClient.invalidateQueries({ queryKey: ['adminStats'] });
       setIsModalOpen(false);
       setEditingProduct(null);
-      alert("상품 정보가 성공적으로 수정되었습니다!");
+      alert('상품 정보가 성공적으로 수정되었습니다!');
     },
     onError: (err) => {
       alert(`상품 수정 실패: ${err.message}`);
@@ -62,9 +62,9 @@ const ProductsPage = () => {
   const deleteMutation = useMutation({
     mutationFn: (productId) => deleteProduct({ productId, getToken }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["adminProducts"] });
-      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
-      alert("상품이 성공적으로 삭제되었습니다!");
+      queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
+      queryClient.invalidateQueries({ queryKey: ['adminStats'] });
+      alert('상품이 성공적으로 삭제되었습니다!');
     },
     onError: (err) => {
       alert(`상품 삭제 실패: ${err.message}`);
@@ -87,7 +87,7 @@ const ProductsPage = () => {
         deleteMutation.mutate(productId);
       }
     },
-    [deleteMutation]
+    [deleteMutation],
   );
 
   const handleFormSubmit = useCallback(
@@ -101,7 +101,7 @@ const ProductsPage = () => {
         createMutation.mutate(formData);
       }
     },
-    [editingProduct, updateMutation, createMutation]
+    [editingProduct, updateMutation, createMutation],
   );
 
   const handleModalClose = useCallback(() => {
@@ -114,7 +114,7 @@ const ProductsPage = () => {
         product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.category?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory =
-        selectedCategory === "ALL" ||
+        selectedCategory === 'ALL' ||
         product.category?.toLowerCase() === selectedCategory.toLowerCase();
       return matchesSearch && matchesCategory;
     });
@@ -130,7 +130,7 @@ const ProductsPage = () => {
       <EmptyState
         icon={PackageSearch}
         title="상품 목록을 불러올 수 없습니다"
-        description={error?.message || "서버 통신 중 오류가 발생했습니다."}
+        description={error?.message || '서버 통신 중 오류가 발생했습니다.'}
       />
     );
   }
@@ -184,7 +184,7 @@ const ProductsPage = () => {
           <span className="badge badge-primary badge-sm font-extrabold px-2.5 py-2 shadow-sm text-xs">
             전체 {(products?.length || 0).toLocaleString()}개
           </span>
-          {(searchTerm.trim() || selectedCategory !== "ALL") && (
+          {(searchTerm.trim() || selectedCategory !== 'ALL') && (
             <span className="text-xs text-base-content/60 font-medium">
               (조회 결과: {filteredProducts.length.toLocaleString()}개)
             </span>
@@ -218,24 +218,26 @@ const ProductsPage = () => {
                         <div className="w-12 h-12 rounded-xl border border-base-300 overflow-hidden bg-base-200 shadow-sm">
                           <img
                             src={
-                              Array.isArray(product.images) && product.images.length > 0
+                              Array.isArray(product.images) &&
+                              product.images.length > 0
                                 ? product.images[0]
-                                : "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=150&auto=format&fit=crop&q=80"
+                                : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=150&auto=format&fit=crop&q=80'
                             }
                             alt={product.name}
                             className="w-full h-full object-cover transition-transform group-hover:scale-110"
                             onError={(e) => {
                               e.target.onerror = null;
                               e.target.src =
-                                "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=150&auto=format&fit=crop&q=80";
+                                'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=150&auto=format&fit=crop&q=80';
                             }}
                           />
                         </div>
-                        {Array.isArray(product.images) && product.images.length > 0 && (
-                          <span className="badge badge-neutral badge-xs absolute -top-1 -right-1 font-bold shadow-sm">
-                            {product.images.length}
-                          </span>
-                        )}
+                        {Array.isArray(product.images) &&
+                          product.images.length > 0 && (
+                            <span className="badge badge-neutral badge-xs absolute -top-1 -right-1 font-bold shadow-sm">
+                              {product.images.length}
+                            </span>
+                          )}
                       </div>
                     </td>
                     <td className="py-3 px-6">
@@ -248,7 +250,7 @@ const ProductsPage = () => {
                     </td>
                     <td className="py-3 px-6">
                       <span className="badge badge-primary badge-outline text-[11px] font-medium">
-                        {product.category || "General"}
+                        {product.category || 'General'}
                       </span>
                     </td>
                     <td className="py-3 px-6 font-bold text-base-content">
@@ -258,8 +260,8 @@ const ProductsPage = () => {
                       <span
                         className={`badge badge-sm font-semibold ${
                           (product.stock || 0) < 10
-                            ? "badge-error"
-                            : "badge-ghost"
+                            ? 'badge-error'
+                            : 'badge-ghost'
                         }`}
                       >
                         {product.stock || 0}개

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { UserButton, useUser, useClerk } from "@clerk/react";
+import { useState } from 'react';
+import { UserButton, useUser, useClerk } from '@clerk/react';
 import {
   LayoutDashboard,
   Package,
@@ -10,13 +10,13 @@ import {
   X,
   LogOut,
   AlertTriangle,
-} from "lucide-react";
+} from 'lucide-react';
 
 const menuItems = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "products", label: "Products", icon: Package },
-  { id: "orders", label: "Orders", icon: ShoppingCart },
-  { id: "customers", label: "Customers", icon: Users },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'products', label: 'Products', icon: Package },
+  { id: 'orders', label: 'Orders', icon: ShoppingCart },
+  { id: 'customers', label: 'Customers', icon: Users },
 ];
 
 const Sidebar = ({
@@ -53,17 +53,17 @@ const Sidebar = ({
       {/* Responsive Sidebar Container */}
       <aside
         className={`fixed lg:static top-0 left-0 z-50 h-screen bg-base-100 border-r border-base-300 flex flex-col justify-between p-3 select-none transition-all duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } ${
           isCollapsed
-            ? "w-72 lg:w-20 min-w-0"
-            : "w-72 lg:w-1/5 min-w-60 max-w-xs"
+            ? 'w-72 lg:w-20 min-w-0'
+            : 'w-72 lg:w-1/5 min-w-60 max-w-xs'
         }`}
       >
         {/* Brand Header */}
         <div
           className={`flex items-center ${
-            isCollapsed ? "justify-center" : "justify-between"
+            isCollapsed ? 'justify-center' : 'justify-between'
           } px-2 py-3 mb-4 border-b border-base-300 transition-all`}
         >
           <div className="flex items-center gap-3">
@@ -75,7 +75,9 @@ const Sidebar = ({
                 <h1 className="text-lg font-bold text-base-content tracking-tight">
                   Admin Portal
                 </h1>
-                <p className="text-xs text-primary font-bold">E-Commerce Suite</p>
+                <p className="text-xs text-primary font-bold">
+                  E-Commerce Suite
+                </p>
               </div>
             )}
           </div>
@@ -105,25 +107,29 @@ const Sidebar = ({
               <button
                 key={item.id}
                 onClick={() => handleSelectTab(item.id)}
-                title={isCollapsed ? item.label : ""}
+                title={isCollapsed ? item.label : ''}
                 className={`w-full flex items-center ${
-                  isCollapsed ? "justify-center px-0 py-3" : "justify-between px-4 py-3.5"
+                  isCollapsed
+                    ? 'justify-center px-0 py-3'
+                    : 'justify-between px-4 py-3.5'
                 } rounded-2xl font-bold text-sm transition-all duration-200 cursor-pointer ${
                   isActive
-                    ? "bg-primary text-primary-content shadow-lg shadow-primary/20"
-                    : "text-base-content/80 hover:bg-base-200 hover:text-primary"
+                    ? 'bg-primary text-primary-content shadow-lg shadow-primary/20'
+                    : 'text-base-content/80 hover:bg-base-200 hover:text-primary'
                 }`}
               >
-                <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
+                <div
+                  className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}
+                >
                   <Icon
                     className={`w-5 h-5 shrink-0 ${
-                      isActive ? "text-primary-content" : "text-base-content/60"
+                      isActive ? 'text-primary-content' : 'text-base-content/60'
                     }`}
                   />
                   {!isCollapsed && (
                     <span
                       className={
-                        isActive ? "text-primary-content font-extrabold" : ""
+                        isActive ? 'text-primary-content font-extrabold' : ''
                       }
                     >
                       {item.label}
@@ -143,7 +149,7 @@ const Sidebar = ({
         <div className="mt-auto border-t border-base-300 pt-3 px-1 space-y-2">
           <div
             className={`flex items-center ${
-              isCollapsed ? "justify-center p-1.5" : "justify-between p-2"
+              isCollapsed ? 'justify-center p-1.5' : 'justify-between p-2'
             } rounded-2xl bg-base-200 border border-base-300`}
           >
             <div className="flex items-center gap-2.5 min-w-0">
@@ -153,10 +159,10 @@ const Sidebar = ({
               {!isCollapsed && (
                 <div className="truncate">
                   <p className="text-xs font-extrabold text-base-content truncate">
-                    {user?.fullName || user?.firstName || "Admin User"}
+                    {user?.fullName || user?.firstName || 'Admin User'}
                   </p>
                   <p className="text-[10px] text-primary font-bold truncate">
-                    {user?.primaryEmailAddress?.emailAddress || "System Admin"}
+                    {user?.primaryEmailAddress?.emailAddress || 'System Admin'}
                   </p>
                 </div>
               )}
@@ -167,9 +173,9 @@ const Sidebar = ({
           <button
             onClick={() => setShowLogoutModal(true)}
             className={`btn btn-error btn-outline btn-sm w-full rounded-2xl font-bold ${
-              isCollapsed ? "px-0 justify-center" : "gap-2"
+              isCollapsed ? 'px-0 justify-center' : 'gap-2'
             } cursor-pointer shadow-sm`}
-            title={isCollapsed ? "Sign Out" : ""}
+            title={isCollapsed ? 'Sign Out' : ''}
           >
             <LogOut className="w-4 h-4 shrink-0" />
             {!isCollapsed && <span>Sign Out</span>}

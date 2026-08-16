@@ -34,7 +34,7 @@ export const formatImageUrl = (url?: string | null): string => {
 
   // 상대 경로 (/uploads/...) 처리: API 서버 주소 붙이기
   if (trimmed.startsWith('/')) {
-    const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
+    const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
     const cleanBase = baseUrl.replace(/\/+$/, '');
     return `${cleanBase}${trimmed}`;
   }

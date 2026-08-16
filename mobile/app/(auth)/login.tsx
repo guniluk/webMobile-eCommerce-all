@@ -13,7 +13,7 @@ export default function LoginScreen() {
       edges={['top', 'left', 'right', 'bottom']}
       className="flex-1 dark:bg-slate-900 bg-slate-100 justify-between px-5 py-2"
     >
-      <Header title="Auth 🔑" subtitle="Sign in to your account" />
+      <Header title="Auth" subtitle="Sign in to your account" />
 
       {/* 히어로 & 소셜 로그인 섹션 */}
       <View className="items-center my-auto px-2">
@@ -25,7 +25,8 @@ export default function LoginScreen() {
           Welcome to Shop!
         </Text>
         <Text className="text-sm dark:text-slate-400 text-slate-600 text-center leading-6 mb-8 px-4 font-medium">
-          소셜 계정으로 빠르고 안전하게 로그인하여{'\n'}스마트한 쇼핑 서비스를 경험해 보세요.
+          소셜 계정으로 빠르고 안전하게 로그인하여{'\n'}스마트한 쇼핑 서비스를
+          경험해 보세요.
         </Text>
 
         {errorMessage ? (
@@ -37,7 +38,7 @@ export default function LoginScreen() {
           </View>
         ) : null}
 
-        {/* 🌐 Google 로그인 버튼 */}
+        {/* Google 로그인 버튼 */}
         <TouchableOpacity
           onPress={() => onSelectOAuth('oauth_google')}
           disabled={loadingStrategy !== null}
@@ -58,7 +59,7 @@ export default function LoginScreen() {
           )}
         </TouchableOpacity>
 
-        {/* 🍏 Apple ID 로그인 버튼 */}
+        {/* Apple ID 로그인 버튼 */}
         <TouchableOpacity
           onPress={() => onSelectOAuth('oauth_apple')}
           disabled={loadingStrategy !== null}
@@ -83,7 +84,8 @@ export default function LoginScreen() {
       {/* 하단 약관 안내 */}
       <View className="items-center mb-4">
         <Text className="text-[11px] dark:text-slate-500 text-slate-400 text-center leading-4">
-          로그인 시 서비스 이용약관 및 개인정보 처리방침에 동의하는 것으로 간주됩니다.
+          로그인 시 서비스 이용약관 및 개인정보 처리방침에 동의하는 것으로
+          간주됩니다.
         </Text>
       </View>
     </SafeAreaView>

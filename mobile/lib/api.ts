@@ -1,6 +1,6 @@
-import { Platform } from "react-native";
-import Constants from "expo-constants";
-import { AxiosRequestConfig, create } from "axios";
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+import { AxiosRequestConfig, create } from 'axios';
 import type {
   Product,
   CartItem,
@@ -11,7 +11,7 @@ import type {
   Order,
   UserProfile,
   Review,
-} from "../types";
+} from '../types';
 
 export type {
   Product,
@@ -28,18 +28,18 @@ export type {
 // ----------------- Base URL Resolver -----------------
 export const PROD_API_URL =
   process.env.EXPO_PUBLIC_PROD_API_URL ||
-  "https://webmobile-ecommerce-all.onrender.com";
+  'https://webmobile-ecommerce-all.onrender.com';
 
 export const getBaseUrl = (): string => {
   // 1. 프로덕션 Render 서버 사용 여부 토글 (env: EXPO_PUBLIC_USE_PRODUCTION_API=true)
-  if (process.env.EXPO_PUBLIC_USE_PRODUCTION_API === "true") {
+  if (process.env.EXPO_PUBLIC_USE_PRODUCTION_API === 'true') {
     return PROD_API_URL;
   }
 
   // 2. 명시적 API URL 지정 시 사용
   const envApiUrl = process.env.EXPO_PUBLIC_API_URL;
   if (envApiUrl) {
-    return envApiUrl.replace(/\/$/, "").replace(/\/api$/, "");
+    return envApiUrl.replace(/\/$/, '').replace(/\/api$/, '');
   }
 
   // 3. Expo Go 개발 모드 hostUri 기반 자동 로컬 IP 호스트 추론
@@ -47,17 +47,17 @@ export const getBaseUrl = (): string => {
     Constants.expoConfig?.hostUri ||
     (Constants as any).manifest2?.extra?.expoGo?.debuggerHost;
 
-  if (typeof hostUri === "string" && hostUri) {
-    const host = hostUri.split(":")[0];
+  if (typeof hostUri === 'string' && hostUri) {
+    const host = hostUri.split(':')[0];
     if (host) {
       return `http://${host}:3000`;
     }
   }
 
   // 4. 로컬 환경 Fallback (Android 에뮬레이터 vs iOS 시뮬레이터 / Web)
-  return Platform.OS === "android"
-    ? "http://10.0.2.2:3000"
-    : "http://localhost:3000";
+  return Platform.OS === 'android'
+    ? 'http://10.0.2.2:3000'
+    : 'http://localhost:3000';
 };
 
 export const API_BASE_URL = getBaseUrl();
@@ -66,15 +66,15 @@ export const API_BASE_URL = getBaseUrl();
 const axiosInstance = create({
   baseURL: `${API_BASE_URL}/api`,
   headers: {
-    "Content-Type": "application/json",
-    "Cache-Control": "no-cache",
-    Pragma: "no-cache",
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache',
+    Pragma: 'no-cache',
   },
   timeout: 15000,
 });
 
 async function request<T>(
-  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   endpoint: string,
   data?: any,
   token?: string | null,
@@ -85,7 +85,7 @@ async function request<T>(
   };
 
   if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   try {
@@ -107,7 +107,7 @@ async function request<T>(
       err.response?.data?.message ||
       err.response?.data?.error ||
       err.message ||
-      "API Request Error";
+      'API Request Error';
     console.warn(`[Axios API ${method}] ${endpoint}:`, errorMessage);
     throw new Error(errorMessage);
   }
@@ -119,39 +119,45 @@ const http = {
     endpoint: string,
     token?: string | null,
     config?: AxiosRequestConfig,
-  ) => request<T>("GET", endpoint, undefined, token, config),
+  ) => request<T>('GET', endpoint, undefined, token, config),
   post: <T>(
     endpoint: string,
     data?: any,
     token?: string | null,
     config?: AxiosRequestConfig,
-  ) => request<T>("POST", endpoint, data, token, config),
+  ) => request<T>('POST', endpoint, data, token, config),
   put: <T>(
     endpoint: string,
     data?: any,
     token?: string | null,
     config?: AxiosRequestConfig,
-  ) => request<T>("PUT", endpoint, data, token, config),
+  ) => request<T>('PUT', endpoint, data, token, config),
   delete: <T>(
     endpoint: string,
     token?: string | null,
     config?: AxiosRequestConfig,
-  ) => request<T>("DELETE", endpoint, undefined, token, config),
+  ) => request<T>('DELETE', endpoint, undefined, token, config),
 };
 
 const normalizeCartResponse = (res: any): CartResponse => {
   const cartObj = res?.cart || res || { items: [] };
   const items = (cartObj?.items || []).map((item: any) => ({
     ...item,
-    product: (typeof item.productId === "object"
+    product: (typeof item.productId === 'object'
       ? item.productId
       : item.product || item.productId) as Product,
   }));
   return { ...cartObj, items };
 };
 
+const extractWishlist = (res: any): Product[] => {
+  const rawList =
+    res?.wishList ?? res?.wishlist ?? (Array.isArray(res) ? res : []);
+  return (Array.isArray(rawList) ? rawList : []).filter(Boolean);
+};
+
 // ----------------- API Service Methods -----------------
-let lastSyncedKey = "";
+let lastSyncedKey = '';
 
 export const api = {
   // 1. 상품 (Products) API
@@ -161,9 +167,9 @@ export const api = {
     token?: string | null,
   ): Promise<Product[]> => {
     const params: Record<string, string> = {};
-    if (category && category !== "All") params.category = category;
+    if (category && category !== 'All') params.category = category;
     if (search && search.trim().length >= 2) params.search = search.trim();
-    return http.get<Product[]>("/products", token, { params });
+    return http.get<Product[]>('/products', token, { params });
   },
 
   getProductById: (
@@ -174,7 +180,7 @@ export const api = {
   // 2. 장바구니 (Cart) API
   getCart: async (token: string | null): Promise<CartResponse> => {
     if (!token) return { items: [] };
-    const res = await http.get<any>("/carts", token);
+    const res = await http.get<any>('/carts', token);
     return normalizeCartResponse(res);
   },
 
@@ -183,7 +189,7 @@ export const api = {
     quantity: number = 1,
     token: string | null,
   ): Promise<CartResponse> => {
-    const res = await http.post<any>("/carts", { productId, quantity }, token);
+    const res = await http.post<any>('/carts', { productId, quantity }, token);
     return normalizeCartResponse(res);
   },
 
@@ -205,7 +211,7 @@ export const api = {
   },
 
   clearCart: (token: string | null): Promise<void> =>
-    http.delete<void>("/carts/clear", token),
+    http.delete<void>('/carts/clear', token),
 
   // 3. 주문 및 결제 (Orders & Payment) API
   createPaymentIntent: (
@@ -225,7 +231,7 @@ export const api = {
       totalAmount: number;
     };
     message?: string;
-  }> => http.post<any>("/payment/create-intent", data, token),
+  }> => http.post<any>('/payment/create-intent', data, token),
 
   createOrder: (
     orderData: {
@@ -248,11 +254,11 @@ export const api = {
       totalPrice: number;
     },
     token: string | null,
-  ): Promise<Order> => http.post<Order>("/orders", orderData, token),
+  ): Promise<Order> => http.post<Order>('/orders', orderData, token),
 
   getUserOrders: async (token: string | null): Promise<Order[]> => {
     if (!token) return [];
-    const res = await http.get<{ orders?: Order[] }>("/orders", token);
+    const res = await http.get<{ orders?: Order[] }>('/orders', token);
     return res?.orders || (Array.isArray(res) ? res : []);
   },
 
@@ -262,12 +268,12 @@ export const api = {
     token?: string | null,
   ): Promise<UserProfile> => {
     if (!token) return {} as UserProfile;
-    const syncKey = `${userData?.email || ""}_${userData?.name || ""}_${userData?.imageUrl || ""}`;
+    const syncKey = `${userData?.email || ''}_${userData?.name || ''}_${userData?.imageUrl || ''}`;
     if (lastSyncedKey === syncKey) {
       return {} as UserProfile;
     }
     const res = await http.post<UserProfile>(
-      "/users/sync",
+      '/users/sync',
       userData || {},
       token,
     );
@@ -277,26 +283,22 @@ export const api = {
 
   getProfile: (token: string | null): Promise<UserProfile> => {
     if (!token) return Promise.resolve({} as UserProfile);
-    return http.get<UserProfile>("/users/me", token);
+    return http.get<UserProfile>('/users/me', token);
   },
 
   // 5. 위시리스트 (Wishlist) API
   getWishlist: async (token: string | null): Promise<Product[]> => {
     if (!token) return [];
-    const res = await http.get<any>("/users/wishlists", token);
-    const rawList =
-      res?.wishList || res?.wishlist || (Array.isArray(res) ? res : []);
-    return (Array.isArray(rawList) ? rawList : []).filter(Boolean);
+    const res = await http.get<any>('/users/wishlists', token);
+    return extractWishlist(res);
   },
 
   addToWishlist: async (
     productId: string,
     token: string | null,
   ): Promise<Product[]> => {
-    const res = await http.post<any>("/users/wishlists", { productId }, token);
-    const rawList =
-      res?.wishList || res?.wishlist || (Array.isArray(res) ? res : []);
-    return (Array.isArray(rawList) ? rawList : []).filter(Boolean);
+    const res = await http.post<any>('/users/wishlists', { productId }, token);
+    return extractWishlist(res);
   },
 
   deleteWishlist: async (
@@ -304,27 +306,25 @@ export const api = {
     token: string | null,
   ): Promise<Product[]> => {
     const res = await http.delete<any>(`/users/wishlists/${productId}`, token);
-    const rawList =
-      res?.wishList || res?.wishlist || (Array.isArray(res) ? res : []);
-    return (Array.isArray(rawList) ? rawList : []).filter(Boolean);
+    return extractWishlist(res);
   },
 
   // 6. 배송지 (Addresses) API
   getAddresses: async (token: string | null): Promise<Address[]> => {
     if (!token) return [];
     const res = await http.get<{ addresses?: Address[] }>(
-      "/users/addresses",
+      '/users/addresses',
       token,
     );
     return res?.addresses || [];
   },
 
   addAddress: async (
-    addressData: Omit<Address, "_id">,
+    addressData: Omit<Address, '_id'>,
     token: string | null,
   ): Promise<Address[]> => {
     const res = await http.post<{ addresses?: Address[] }>(
-      "/users/addresses",
+      '/users/addresses',
       addressData,
       token,
     );
@@ -371,7 +371,7 @@ export const api = {
       comment?: string;
     },
     token: string | null,
-  ): Promise<Review> => http.post<Review>("/reviews", reviewData, token),
+  ): Promise<Review> => http.post<Review>('/reviews', reviewData, token),
 
   updateReview: (
     reviewId: string,
@@ -395,7 +395,7 @@ export const api = {
   ): Promise<{ notifications: any[]; unreadCount: number }> => {
     if (!token) return { notifications: [], unreadCount: 0 };
     return http.get<{ notifications: any[]; unreadCount: number }>(
-      "/notifications",
+      '/notifications',
       token,
     );
   },
@@ -405,7 +405,7 @@ export const api = {
     token: string | null,
   ): Promise<{ success: boolean; unreadCount: number }> =>
     request<{ success: boolean; unreadCount: number }>(
-      "PATCH",
+      'PATCH',
       `/notifications/${notificationId}/read`,
       {},
       token,
@@ -415,8 +415,8 @@ export const api = {
     token: string | null,
   ): Promise<{ success: boolean; unreadCount: number }> =>
     request<{ success: boolean; unreadCount: number }>(
-      "PATCH",
-      "/notifications/read-all",
+      'PATCH',
+      '/notifications/read-all',
       {},
       token,
     ),
@@ -434,7 +434,7 @@ export const api = {
     token: string | null,
   ): Promise<{ success: boolean; unreadCount: number }> =>
     http.delete<{ success: boolean; unreadCount: number }>(
-      "/notifications",
+      '/notifications',
       token,
     ),
 };

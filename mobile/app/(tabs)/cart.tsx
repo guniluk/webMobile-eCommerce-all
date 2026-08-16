@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Text,
   View,
@@ -7,27 +7,27 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { useAuth, useUser } from "@clerk/clerk-expo";
-import { Header } from "../../components/Header";
-import { Address, ShippingAddress } from "../../types";
-import { CartItemRow } from "../../components/cart/CartItemRow";
-import { OrderSummaryCard } from "../../components/cart/OrderSummaryCard";
-import { SelectAddressModal } from "../../components/cart/SelectAddressModal";
-import { api } from "../../lib/api";
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth, useUser } from '@clerk/clerk-expo';
+import { Header } from '../../components/Header';
+import { Address, ShippingAddress } from '../../types';
+import { CartItemRow } from '../../components/cart/CartItemRow';
+import { OrderSummaryCard } from '../../components/cart/OrderSummaryCard';
+import { SelectAddressModal } from '../../components/cart/SelectAddressModal';
+import { api } from '../../lib/api';
 
 import {
   useCartQuery,
   useUpdateCartMutation,
   useDeleteCartMutation,
   useClearCartMutation,
-} from "../../hooks/useCartQuery";
-import { useAddressesQuery } from "../../hooks/useAddressesQuery";
-import { useCreateOrderMutation } from "../../hooks/useOrdersQuery";
-import { useStripe } from "../../lib/stripe";
-import * as Sentry from "@sentry/react-native";
+} from '../../hooks/useCartQuery';
+import { useAddressesQuery } from '../../hooks/useAddressesQuery';
+import { useCreateOrderMutation } from '../../hooks/useOrdersQuery';
+import { useStripe } from '../../lib/stripe';
+import * as Sentry from '@sentry/react-native';
 
 export default function CartScreen() {
   const { getToken } = useAuth();
@@ -81,22 +81,22 @@ export default function CartScreen() {
 
   const handleDeleteItem = useCallback(
     (productId: string, productName?: string) => {
-      const nameText = productName ? `'${productName}' ` : "해당 ";
+      const nameText = productName ? `'${productName}' ` : '해당 ';
       Alert.alert(
-        "상품 삭제 확인 🗑️",
+        '상품 삭제 확인 🗑️',
         `${nameText}상품을 장바구니에서 삭제하시겠습니까?`,
         [
-          { text: "취소", style: "cancel" },
+          { text: '취소', style: 'cancel' },
           {
-            text: "삭제",
-            style: "destructive",
+            text: '삭제',
+            style: 'destructive',
             onPress: () => {
               deleteCartMutation.mutate(productId, {
                 onError: (err: any) => {
                   Sentry.captureException(err, {
-                    tags: { section: "delete_cart_item" },
+                    tags: { section: 'delete_cart_item' },
                   });
-                  Alert.alert("오류", err?.message || "삭제 실패");
+                  Alert.alert('오류', err?.message || '삭제 실패');
                 },
               });
             },
@@ -110,22 +110,22 @@ export default function CartScreen() {
   const handleUpdateQuantity = useCallback(
     (productId: string, newQuantity: number, productName?: string) => {
       if (newQuantity < 1) {
-        const nameText = productName ? `'${productName}' ` : "해당 ";
+        const nameText = productName ? `'${productName}' ` : '해당 ';
         Alert.alert(
-          "상품 삭제 확인 🗑️",
+          '상품 삭제 확인 🗑️',
           `수량이 0이 되었습니다. ${nameText}상품을 장바구니에서 삭제하시겠습니까?`,
           [
-            { text: "취소", style: "cancel" },
+            { text: '취소', style: 'cancel' },
             {
-              text: "삭제",
-              style: "destructive",
+              text: '삭제',
+              style: 'destructive',
               onPress: () => {
                 deleteCartMutation.mutate(productId, {
                   onError: (err: any) => {
                     Sentry.captureException(err, {
-                      tags: { section: "delete_cart_item_zero_qty" },
+                      tags: { section: 'delete_cart_item_zero_qty' },
                     });
-                    Alert.alert("오류", err?.message || "삭제 실패");
+                    Alert.alert('오류', err?.message || '삭제 실패');
                   },
                 });
               },
@@ -139,9 +139,9 @@ export default function CartScreen() {
         {
           onError: (err: any) => {
             Sentry.captureException(err, {
-              tags: { section: "update_cart_quantity" },
+              tags: { section: 'update_cart_quantity' },
             });
-            Alert.alert("오류", err?.message || "수량 변경 실패");
+            Alert.alert('오류', err?.message || '수량 변경 실패');
           },
         },
       );
@@ -150,18 +150,18 @@ export default function CartScreen() {
   );
 
   const handleClearCart = useCallback(() => {
-    Alert.alert("장바구니 비우기", "장바구니의 모든 상품을 삭제하시겠습니까?", [
-      { text: "취소", style: "cancel" },
+    Alert.alert('장바구니 비우기', '장바구니의 모든 상품을 삭제하시겠습니까?', [
+      { text: '취소', style: 'cancel' },
       {
-        text: "삭제",
-        style: "destructive",
+        text: '삭제',
+        style: 'destructive',
         onPress: () => {
           clearCartMutation.mutate(undefined, {
             onError: (err: any) => {
               Sentry.captureException(err, {
-                tags: { section: "clear_cart" },
+                tags: { section: 'clear_cart' },
               });
-              Alert.alert("오류", err?.message || "비우기 실패");
+              Alert.alert('오류', err?.message || '비우기 실패');
             },
           });
         },
@@ -169,15 +169,19 @@ export default function CartScreen() {
     ]);
   }, [clearCartMutation]);
 
+  const SHIPPING_FEE = 3000;
+  const TAX_RATE = 0.1;
+  const FREE_SHIPPING_THRESHOLD = 100000;
+
   const { subtotal, finalTotal } = useMemo(() => {
     const sub = cartItems.reduce((acc, item) => {
       const prod = item.product || item.productId;
-      const price = typeof prod === "object" && prod ? prod.price : 0;
+      const price = typeof prod === 'object' && prod ? prod.price : 0;
       return acc + price * item.quantity;
     }, 0);
-
-    const shipping = sub > 0 && sub < 100000 ? 3000 : 0;
-    const t = Math.round(sub * 0.1);
+    const shipping =
+      sub > 0 && sub < FREE_SHIPPING_THRESHOLD ? SHIPPING_FEE : 0;
+    const t = Math.round(sub * TAX_RATE);
     const total = sub + shipping + t;
 
     return {
@@ -198,18 +202,18 @@ export default function CartScreen() {
     });
 
     if (validCartItems.length === 0) {
-      Alert.alert("알림", "유효한 장바구니 상품이 없습니다.");
+      Alert.alert('알림', '유효한 장바구니 상품이 없습니다.');
       return;
     }
 
     if (!currentAddress) {
       Alert.alert(
-        "배송지 필요 📍",
-        "주문을 진행하려면 먼저 배송지를 등록해 주세요.",
+        '배송지 필요 📍',
+        '주문을 진행하려면 먼저 배송지를 등록해 주세요.',
         [
-          { text: "취소", style: "cancel" },
+          { text: '취소', style: 'cancel' },
           {
-            text: "배송지 관리/등록",
+            text: '배송지 관리/등록',
             onPress: () => setAddressModalOpen(true),
           },
         ],
@@ -221,16 +225,16 @@ export default function CartScreen() {
       fullName: currentAddress.fullName,
       streetAddress: currentAddress.streetAddress,
       city: currentAddress.city,
-      state: currentAddress.state || "서울특별시",
+      state: currentAddress.state || '서울특별시',
       zipCode: currentAddress.zipCode,
       phoneNumber: currentAddress.phoneNumber,
     };
 
     // Sentry 결제 진행 브레드크럼 기록
     Sentry.addBreadcrumb({
-      category: "checkout",
-      message: "Cart checkout process initiated",
-      level: "info",
+      category: 'checkout',
+      message: 'Cart checkout process initiated',
+      level: 'info',
       data: {
         itemCount: validCartItems.length,
         finalTotal,
@@ -241,7 +245,7 @@ export default function CartScreen() {
     const cartItemsForIntent = validCartItems.map((item) => {
       const prod = item.product || item.productId;
       const prodId =
-        (typeof prod === "object" && prod ? prod._id : (prod as string)) || "";
+        (typeof prod === 'object' && prod ? prod._id : (prod as string)) || '';
       return {
         productId: prodId,
         quantity: item.quantity,
@@ -263,13 +267,13 @@ export default function CartScreen() {
 
       if (!intentResult || !intentResult.clientSecret) {
         Sentry.captureMessage(
-          `PaymentIntent creation failed: ${intentResult?.message || "No clientSecret"}`,
-          "warning",
+          `PaymentIntent creation failed: ${intentResult?.message || 'No clientSecret'}`,
+          'warning',
         );
         Alert.alert(
-          "결제 준비 실패 ⚠️",
+          '결제 준비 실패 ⚠️',
           intentResult?.message ||
-            "결제 세션(clientSecret)을 생성하지 못했습니다.",
+            '결제 세션(clientSecret)을 생성하지 못했습니다.',
         );
         setIsProcessingPayment(false);
         return;
@@ -278,7 +282,7 @@ export default function CartScreen() {
       // 2. Stripe PaymentSheet 결제창 초기화
       const { error: initError } = await initPaymentSheet({
         paymentIntentClientSecret: intentResult.clientSecret,
-        merchantDisplayName: "BYH E-Commerce Test Store",
+        merchantDisplayName: 'BYH E-Commerce Test Store',
         defaultBillingDetails: {
           name: shippingAddress.fullName,
           phone: shippingAddress.phoneNumber,
@@ -287,9 +291,9 @@ export default function CartScreen() {
 
       if (initError) {
         Sentry.captureException(initError, {
-          tags: { section: "stripe_init_payment_sheet" },
+          tags: { section: 'stripe_init_payment_sheet' },
         });
-        Alert.alert("결제 초기화 오류 ❌", initError.message);
+        Alert.alert('결제 초기화 오류 ❌', initError.message);
         setIsProcessingPayment(false);
         return;
       }
@@ -298,15 +302,15 @@ export default function CartScreen() {
       const { error: presentError } = await presentPaymentSheet();
 
       if (presentError) {
-        if (presentError.code === "Canceled") {
+        if (presentError.code === 'Canceled') {
           // 유저가 결제 모달을 취소한 것은 시스템/코드 에러가 아니므로 Sentry 수집 제외
-          Alert.alert("안내 ℹ️", "결제가 취소되었습니다.");
+          Alert.alert('안내 ℹ️', '결제가 취소되었습니다.');
         } else {
           // 결제 승인 실패 등 실제 결제 에러 시 수집
           Sentry.captureException(presentError, {
-            tags: { section: "stripe_present_payment_sheet" },
+            tags: { section: 'stripe_present_payment_sheet' },
           });
-          Alert.alert("결제 실패 ❌", presentError.message);
+          Alert.alert('결제 실패 ❌', presentError.message);
         }
         setIsProcessingPayment(false);
         return;
@@ -316,14 +320,14 @@ export default function CartScreen() {
       const orderItems = validCartItems.map((item) => {
         const prod = item.product || item.productId;
         const prodId =
-          (typeof prod === "object" && prod ? prod._id : (prod as string)) ||
-          "";
-        const name = typeof prod === "object" && prod ? prod.name : "상품";
-        const price = typeof prod === "object" && prod ? prod.price : 0;
+          (typeof prod === 'object' && prod ? prod._id : (prod as string)) ||
+          '';
+        const name = typeof prod === 'object' && prod ? prod.name : '상품';
+        const price = typeof prod === 'object' && prod ? prod.price : 0;
         const image =
-          (typeof prod === "object" && prod
+          (typeof prod === 'object' && prod
             ? prod.image || prod.images?.[0]
-            : "") || "https://via.placeholder.com/150";
+            : '') || 'https://via.placeholder.com/150';
 
         return {
           productId: prodId,
@@ -335,18 +339,18 @@ export default function CartScreen() {
       });
 
       const paymentResult = {
-        id: intentResult.paymentIntentId || "PAY_" + Date.now(),
-        status: "COMPLETED",
+        id: intentResult.paymentIntentId || 'PAY_' + Date.now(),
+        status: 'COMPLETED',
         update_time: new Date().toISOString(),
         email_address:
-          user?.primaryEmailAddress?.emailAddress || "user@example.com",
+          user?.primaryEmailAddress?.emailAddress || 'user@example.com',
       };
 
       createOrderMutation.mutate(
         {
           orderItems,
           totalPrice: intentResult.amountDetails?.totalAmount || finalTotal,
-          paymentMethod: "Stripe Credit Card",
+          paymentMethod: 'Stripe Credit Card',
           shippingAddress,
           paymentResult,
         },
@@ -354,24 +358,24 @@ export default function CartScreen() {
           onSuccess: () => {
             clearCartMutation.mutate();
             Sentry.addBreadcrumb({
-              category: "checkout",
-              message: "Order successfully created after payment",
-              level: "info",
+              category: 'checkout',
+              message: 'Order successfully created after payment',
+              level: 'info',
             });
             Alert.alert(
-              "결제 및 주문 완료! 🎉",
-              "Stripe 카드 결제가 성공적으로 완료되어 주문이 접수되었습니다.\nProfile 탭에서 주문 내역을 확인하실 수 있습니다.",
+              '결제 및 주문 완료! 🎉',
+              'Stripe 카드 결제가 성공적으로 완료되어 주문이 접수되었습니다.\nProfile 탭에서 주문 내역을 확인하실 수 있습니다.',
             );
           },
           onError: (err: any) => {
             Sentry.captureException(err, {
-              tags: { section: "create_order_after_payment" },
+              tags: { section: 'create_order_after_payment' },
               extra: { paymentIntentId: intentResult.paymentIntentId },
             });
             Alert.alert(
-              "주문 생성 실패 ⚠️",
+              '주문 생성 실패 ⚠️',
               err?.message ||
-                "결제는 성공했으나 주문 기록 생성에 실패했습니다.",
+                '결제는 성공했으나 주문 기록 생성에 실패했습니다.',
             );
           },
           onSettled: () => {
@@ -383,11 +387,11 @@ export default function CartScreen() {
       );
     } catch (err: any) {
       Sentry.captureException(err, {
-        tags: { section: "cart_handle_checkout_catch" },
+        tags: { section: 'cart_handle_checkout_catch' },
       });
       Alert.alert(
-        "결제 처리 오류 ❌",
-        err?.message || "결제 진행 중 오류가 발생했습니다.",
+        '결제 처리 오류 ❌',
+        err?.message || '결제 진행 중 오류가 발생했습니다.',
       );
       if (isMountedRef.current) {
         setIsProcessingPayment(false);
@@ -408,7 +412,7 @@ export default function CartScreen() {
 
   return (
     <SafeAreaView
-      edges={["top", "left", "right"]}
+      edges={['top', 'left', 'right']}
       className="flex-1 dark:bg-slate-900 bg-slate-100"
     >
       <ScrollView
@@ -460,8 +464,8 @@ export default function CartScreen() {
             {cartItems.map((item, index) => (
               <CartItemRow
                 key={
-                  (typeof item.product === "object" && item.product?._id) ||
-                  (typeof item.productId === "object" && item.productId?._id) ||
+                  (typeof item.product === 'object' && item.product?._id) ||
+                  (typeof item.productId === 'object' && item.productId?._id) ||
                   (item.productId as unknown as string) ||
                   index
                 }

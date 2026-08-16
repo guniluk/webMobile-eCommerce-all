@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from 'react';
 import {
   View,
   Text,
@@ -26,7 +32,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useOrdersQuery } from '../../hooks/useOrdersQuery';
 import { useNotificationsQuery } from '../../hooks/useNotificationsQuery';
 import { useNotificationStore } from '../../store/useNotificationStore';
-import { useWishlistQuery, useDeleteWishlistMutation } from '../../hooks/useWishlistQuery';
+import {
+  useWishlistQuery,
+  useDeleteWishlistMutation,
+} from '../../hooks/useWishlistQuery';
 import {
   useAddressesQuery,
   useAddAddressMutation,
@@ -44,8 +53,10 @@ export default function ProfileScreen() {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'wishlist' | 'addresses'>('orders');
-  
+  const [activeTab, setActiveTab] = useState<
+    'orders' | 'wishlist' | 'addresses'
+  >('orders');
+
   const {
     readNotiIds,
     clearedNotiIds,
@@ -90,22 +101,19 @@ export default function ProfileScreen() {
     refetch: refetchOrders,
   } = useOrdersQuery();
 
-  const {
-    data: wishlist = [],
-    refetch: refetchWishlist,
-  } = useWishlistQuery();
+  const { data: wishlist = [], refetch: refetchWishlist } = useWishlistQuery();
 
-  const {
-    data: addresses = [],
-    refetch: refetchAddresses,
-  } = useAddressesQuery();
+  const { data: addresses = [], refetch: refetchAddresses } =
+    useAddressesQuery();
 
   const { data: cartData } = useCartQuery();
   const cartItemIds = useMemo(() => {
     const items = cartData?.items || [];
     return items
       .map((item) =>
-        typeof item.productId === 'object' ? item.productId._id : item.productId,
+        typeof item.productId === 'object'
+          ? item.productId._id
+          : item.productId,
       )
       .filter((id): id is string => Boolean(id));
   }, [cartData]);
@@ -124,7 +132,8 @@ export default function ProfileScreen() {
           const token = await getToken();
           const realUserData = {
             email: user?.primaryEmailAddress?.emailAddress,
-            name: (user?.fullName || user?.firstName || user?.username) || undefined,
+            name:
+              user?.fullName || user?.firstName || user?.username || undefined,
             imageUrl: user?.imageUrl,
           };
           await api.syncUser(realUserData, token).catch(() => {});
@@ -182,7 +191,7 @@ export default function ProfileScreen() {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       refetchOrders();
       refetchNotifications();
-    }, [queryClient, refetchOrders, refetchNotifications])
+    }, [queryClient, refetchOrders, refetchNotifications]),
   );
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -192,11 +201,22 @@ export default function ProfileScreen() {
     try {
       await queryClient.invalidateQueries({ queryKey: ['orders'] });
       await queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      await Promise.all([refetchOrders(), refetchWishlist(), refetchAddresses(), refetchNotifications()]);
+      await Promise.all([
+        refetchOrders(),
+        refetchWishlist(),
+        refetchAddresses(),
+        refetchNotifications(),
+      ]);
     } finally {
       setIsRefreshing(false);
     }
-  }, [queryClient, refetchOrders, refetchWishlist, refetchAddresses, refetchNotifications]);
+  }, [
+    queryClient,
+    refetchOrders,
+    refetchWishlist,
+    refetchAddresses,
+    refetchNotifications,
+  ]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -214,7 +234,10 @@ export default function ProfileScreen() {
             try {
               await signOut();
             } catch {
-              Alert.alert('로그아웃 실패 ❌', '로그아웃 처리 중 문제가 발생했습니다.');
+              Alert.alert(
+                '로그아웃 실패 ❌',
+                '로그아웃 처리 중 문제가 발생했습니다.',
+              );
             }
           },
         },
@@ -228,11 +251,14 @@ export default function ProfileScreen() {
       typeof product.stock === 'number'
         ? product.stock
         : typeof product.stockQuantity === 'number'
-        ? product.stockQuantity
-        : 0;
+          ? product.stockQuantity
+          : 0;
 
     if (stockCount < 1 || product.inStock === false) {
-      Alert.alert('장바구니 담기 불가 🚫', '해당 상품은 현재 재고가 없어 장바구니에 담을 수 없습니다.');
+      Alert.alert(
+        '장바구니 담기 불가 🚫',
+        '해당 상품은 현재 재고가 없어 장바구니에 담을 수 없습니다.',
+      );
       return;
     }
 
@@ -240,7 +266,10 @@ export default function ProfileScreen() {
       { productId: product._id, quantity: 1 },
       {
         onSuccess: () => {
-          Alert.alert('성공 🛒', `${product.name} 상품이 장바구니에 담겼습니다.`);
+          Alert.alert(
+            '성공 🛒',
+            `${product.name} 상품이 장바구니에 담겼습니다.`,
+          );
         },
         onError: () => {
           Alert.alert('오류 ❌', '장바구니 추가 중 오류가 발생했습니다.');
@@ -266,11 +295,11 @@ export default function ProfileScreen() {
 
   const openAddressModal = () => {
     setEditingAddress(null);
-    setNewLabel('집');
-    setNewFullName(user?.fullName || user?.firstName || '');
+    setNewLabel('');
+    setNewFullName('');
     setNewStreetAddress('');
-    setNewCity('서울');
-    setNewState('서울특별시');
+    setNewCity('');
+    setNewState('');
     setNewZipCode('');
     setNewPhone('');
     setNewIsDefault(false);
@@ -279,11 +308,11 @@ export default function ProfileScreen() {
 
   const openEditAddressModal = (address: Address) => {
     setEditingAddress(address);
-    setNewLabel(address.label || '배송지');
+    setNewLabel(address.label || '');
     setNewFullName(address.fullName || '');
     setNewStreetAddress(address.streetAddress || '');
-    setNewCity(address.city || '서울');
-    setNewState(address.state || '서울특별시');
+    setNewCity(address.city || '');
+    setNewState(address.state || '');
     setNewZipCode(address.zipCode || '');
     setNewPhone(address.phoneNumber || '');
     setNewIsDefault(address.isDefault || false);
@@ -291,19 +320,25 @@ export default function ProfileScreen() {
   };
 
   const handleSaveAddress = () => {
-    if (!newFullName || !newStreetAddress || !newCity || !newZipCode || !newPhone) {
+    if (
+      !newFullName.trim() ||
+      !newStreetAddress.trim() ||
+      !newCity.trim() ||
+      !newZipCode.trim() ||
+      !newPhone.trim()
+    ) {
       Alert.alert('입력 오류 ⚠️', '배송지 필수 항목을 모두 입력해 주세요.');
       return;
     }
 
     const payload = {
-      label: newLabel || '배송지',
-      fullName: newFullName,
-      streetAddress: newStreetAddress,
-      city: newCity,
-      state: newState || '서울특별시',
-      zipCode: newZipCode,
-      phoneNumber: newPhone,
+      label: newLabel.trim() || '집',
+      fullName: newFullName.trim(),
+      streetAddress: newStreetAddress.trim(),
+      city: newCity.trim(),
+      state: newState.trim() || newCity.trim() || '서울특별시',
+      zipCode: newZipCode.trim(),
+      phoneNumber: newPhone.trim(),
       isDefault: newIsDefault,
     };
 
@@ -363,12 +398,16 @@ export default function ProfileScreen() {
           onPress: () => {
             deleteAddressMutation.mutate(addressId, {
               onSuccess: () => {
-                Alert.alert('삭제 완료 ✅', '배송지가 성공적으로 삭제되었습니다.');
+                Alert.alert(
+                  '삭제 완료 ✅',
+                  '배송지가 성공적으로 삭제되었습니다.',
+                );
               },
               onError: (err: any) => {
                 Alert.alert(
                   '삭제 실패 ⚠️',
-                  err?.message || '기본 배송지는 삭제하실 수 없습니다. 다른 배송지를 먼저 기본 배송지로 지정해 주세요.',
+                  err?.message ||
+                    '기본 배송지는 삭제하실 수 없습니다. 다른 배송지를 먼저 기본 배송지로 지정해 주세요.',
                 );
               },
             });
@@ -404,7 +443,10 @@ export default function ProfileScreen() {
         onSuccess: () => {
           setReviewModalOpen(false);
           setReviewComment('');
-          Alert.alert('성공', '소중한 리뷰 메시지가 성공적으로 등록되었습니다.');
+          Alert.alert(
+            '성공',
+            '소중한 리뷰 메시지가 성공적으로 등록되었습니다.',
+          );
         },
         onError: (err: any) => {
           const msg = err?.message || '리뷰 등록 실패';
@@ -419,7 +461,10 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 dark:bg-slate-900 bg-slate-100">
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      className="flex-1 dark:bg-slate-900 bg-slate-100"
+    >
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 90 }}
         refreshControl={
@@ -430,7 +475,10 @@ export default function ProfileScreen() {
           />
         }
       >
-        <Header title="Profile 👤" subtitle="Manage your account & preferences" />
+        <Header
+          title="Profile 👤"
+          subtitle="Manage your account & preferences"
+        />
 
         <UserProfileCard user={user} onLogout={handleLogout} />
 
@@ -453,22 +501,49 @@ export default function ProfileScreen() {
                 marginRight: 8,
                 flexDirection: 'row',
                 alignItems: 'center',
-                backgroundColor: activeTab === 'orders' ? (isDark ? '#334155' : '#ffffff') : (isDark ? '#1e293b' : '#f1f5f9'),
+                backgroundColor:
+                  activeTab === 'orders'
+                    ? isDark
+                      ? '#334155'
+                      : '#ffffff'
+                    : isDark
+                      ? '#1e293b'
+                      : '#f1f5f9',
                 borderWidth: 1,
-                borderColor: activeTab === 'orders' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#334155' : '#e2e8f0'),
+                borderColor:
+                  activeTab === 'orders'
+                    ? isDark
+                      ? '#38bdf8'
+                      : '#0284c7'
+                    : isDark
+                      ? '#334155'
+                      : '#e2e8f0',
               }}
             >
               <Ionicons
                 name="cube-outline"
                 size={16}
-                color={activeTab === 'orders' ? (isDark ? '#38bdf8' : '#0284c7') : '#94a3b8'}
+                color={
+                  activeTab === 'orders'
+                    ? isDark
+                      ? '#38bdf8'
+                      : '#0284c7'
+                    : '#94a3b8'
+                }
                 style={{ marginRight: 5 }}
               />
               <Text
                 style={{
                   fontSize: 12,
                   fontWeight: activeTab === 'orders' ? '800' : '700',
-                  color: activeTab === 'orders' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#94a3b8' : '#64748b'),
+                  color:
+                    activeTab === 'orders'
+                      ? isDark
+                        ? '#38bdf8'
+                        : '#0284c7'
+                      : isDark
+                        ? '#94a3b8'
+                        : '#64748b',
                 }}
               >
                 주문내역
@@ -490,22 +565,49 @@ export default function ProfileScreen() {
                 marginRight: 8,
                 flexDirection: 'row',
                 alignItems: 'center',
-                backgroundColor: activeTab === 'wishlist' ? (isDark ? '#334155' : '#ffffff') : (isDark ? '#1e293b' : '#f1f5f9'),
+                backgroundColor:
+                  activeTab === 'wishlist'
+                    ? isDark
+                      ? '#334155'
+                      : '#ffffff'
+                    : isDark
+                      ? '#1e293b'
+                      : '#f1f5f9',
                 borderWidth: 1,
-                borderColor: activeTab === 'wishlist' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#334155' : '#e2e8f0'),
+                borderColor:
+                  activeTab === 'wishlist'
+                    ? isDark
+                      ? '#38bdf8'
+                      : '#0284c7'
+                    : isDark
+                      ? '#334155'
+                      : '#e2e8f0',
               }}
             >
               <Ionicons
                 name="heart-outline"
                 size={16}
-                color={activeTab === 'wishlist' ? (isDark ? '#38bdf8' : '#0284c7') : '#94a3b8'}
+                color={
+                  activeTab === 'wishlist'
+                    ? isDark
+                      ? '#38bdf8'
+                      : '#0284c7'
+                    : '#94a3b8'
+                }
                 style={{ marginRight: 5 }}
               />
               <Text
                 style={{
                   fontSize: 12,
                   fontWeight: activeTab === 'wishlist' ? '800' : '700',
-                  color: activeTab === 'wishlist' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#94a3b8' : '#64748b'),
+                  color:
+                    activeTab === 'wishlist'
+                      ? isDark
+                        ? '#38bdf8'
+                        : '#0284c7'
+                      : isDark
+                        ? '#94a3b8'
+                        : '#64748b',
                 }}
               >
                 위시리스트
@@ -521,7 +623,14 @@ export default function ProfileScreen() {
                   style={{
                     fontSize: 10,
                     fontWeight: '800',
-                    color: activeTab === 'wishlist' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#94a3b8' : '#64748b'),
+                    color:
+                      activeTab === 'wishlist'
+                        ? isDark
+                          ? '#38bdf8'
+                          : '#0284c7'
+                        : isDark
+                          ? '#94a3b8'
+                          : '#64748b',
                   }}
                 >
                   {wishlist.length}
@@ -540,22 +649,49 @@ export default function ProfileScreen() {
                 marginRight: 8,
                 flexDirection: 'row',
                 alignItems: 'center',
-                backgroundColor: activeTab === 'addresses' ? (isDark ? '#334155' : '#ffffff') : (isDark ? '#1e293b' : '#f1f5f9'),
+                backgroundColor:
+                  activeTab === 'addresses'
+                    ? isDark
+                      ? '#334155'
+                      : '#ffffff'
+                    : isDark
+                      ? '#1e293b'
+                      : '#f1f5f9',
                 borderWidth: 1,
-                borderColor: activeTab === 'addresses' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#334155' : '#e2e8f0'),
+                borderColor:
+                  activeTab === 'addresses'
+                    ? isDark
+                      ? '#38bdf8'
+                      : '#0284c7'
+                    : isDark
+                      ? '#334155'
+                      : '#e2e8f0',
               }}
             >
               <Ionicons
                 name="location-outline"
                 size={16}
-                color={activeTab === 'addresses' ? (isDark ? '#38bdf8' : '#0284c7') : '#94a3b8'}
+                color={
+                  activeTab === 'addresses'
+                    ? isDark
+                      ? '#38bdf8'
+                      : '#0284c7'
+                    : '#94a3b8'
+                }
                 style={{ marginRight: 5 }}
               />
               <Text
                 style={{
                   fontSize: 12,
                   fontWeight: activeTab === 'addresses' ? '800' : '700',
-                  color: activeTab === 'addresses' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#94a3b8' : '#64748b'),
+                  color:
+                    activeTab === 'addresses'
+                      ? isDark
+                        ? '#38bdf8'
+                        : '#0284c7'
+                      : isDark
+                        ? '#94a3b8'
+                        : '#64748b',
                 }}
               >
                 배송지
@@ -571,7 +707,14 @@ export default function ProfileScreen() {
                   style={{
                     fontSize: 10,
                     fontWeight: '800',
-                    color: activeTab === 'addresses' ? (isDark ? '#38bdf8' : '#0284c7') : (isDark ? '#94a3b8' : '#64748b'),
+                    color:
+                      activeTab === 'addresses'
+                        ? isDark
+                          ? '#38bdf8'
+                          : '#0284c7'
+                        : isDark
+                          ? '#94a3b8'
+                          : '#64748b',
                   }}
                 >
                   {addresses.length}

@@ -40,99 +40,101 @@ interface ShopHeaderProps {
   productCount: number;
 }
 
-const ShopHeader = React.memo(({
-  searchQuery,
-  onSearchQueryChange,
-  selectedCategory,
-  onSelectCategory,
-  productCount,
-}: ShopHeaderProps) => {
-  return (
-    <View className="mb-2">
-      <Header
-        title="Explore Products 🛍️"
-        subtitle="Find top trending items"
-      />
-
-      {/* 🔍 검색 바 */}
-      <View className="mb-4 flex-row items-center bg-white dark:bg-slate-800 rounded-2xl px-4 py-3 border dark:border-slate-700 border-slate-200 shadow-sm">
-        <Ionicons name="search-outline" size={20} color="#0284c7" />
-        <TextInput
-          placeholder="상품명 또는 카테고리 검색 (2글자 이상)..."
-          placeholderTextColor="#94a3b8"
-          value={searchQuery}
-          onChangeText={onSearchQueryChange}
-          className="flex-1 ml-2 text-sm dark:text-white text-slate-800 font-medium"
+const ShopHeader = React.memo(
+  ({
+    searchQuery,
+    onSearchQueryChange,
+    selectedCategory,
+    onSelectCategory,
+    productCount,
+  }: ShopHeaderProps) => {
+    return (
+      <View className="mb-2">
+        <Header
+          title="Explore Products 🛍️"
+          subtitle="Find top trending items"
         />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => onSearchQueryChange('')}>
-            <Ionicons name="close-circle" size={18} color="#94a3b8" />
-          </TouchableOpacity>
-        )}
-      </View>
 
-      {/* 🏷️ 카테고리 필터 */}
-      <View className="mb-4">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {['All', 'Books', 'Electronics', 'Fashion', 'Home', 'Sports'].map(
-            (cat) => {
-              const isSelected =
-                selectedCategory.toLowerCase() === cat.toLowerCase();
-              const iconSrc = CATEGORY_IMAGES[cat.toLowerCase()];
+        {/* 🔍 검색 바 */}
+        <View className="mb-4 flex-row items-center bg-white dark:bg-slate-800 rounded-2xl px-4 py-3 border dark:border-slate-700 border-slate-200 shadow-sm">
+          <Ionicons name="search-outline" size={20} color="#0284c7" />
+          <TextInput
+            placeholder="상품명 또는 카테고리 검색 (2글자 이상)..."
+            placeholderTextColor="#94a3b8"
+            value={searchQuery}
+            onChangeText={onSearchQueryChange}
+            className="flex-1 ml-2 text-sm dark:text-white text-slate-800 font-medium"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => onSearchQueryChange('')}>
+              <Ionicons name="close-circle" size={18} color="#94a3b8" />
+            </TouchableOpacity>
+          )}
+        </View>
 
-              return (
-                <TouchableOpacity
-                  key={cat}
-                  activeOpacity={0.8}
-                  onPress={() => onSelectCategory(cat)}
-                  className={`mr-3 px-4 py-2.5 rounded-2xl flex-row items-center border shadow-sm ${
-                    isSelected
-                      ? 'bg-sky-500/10 border-sky-500 dark:border-cyan-400'
-                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  {iconSrc ? (
-                    <Image
-                      source={iconSrc}
-                      className="w-5 h-5 mr-1.5"
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <Ionicons
-                      name="grid-outline"
-                      size={16}
-                      color={isSelected ? '#0284c7' : '#64748b'}
-                      style={{ marginRight: 6 }}
-                    />
-                  )}
-                  <Text
-                    className={`text-xs font-bold capitalize ${
+        {/* 🏷️ 카테고리 필터 */}
+        <View className="mb-4">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {['All', 'Books', 'Electronics', 'Fashion', 'Home', 'Sports'].map(
+              (cat) => {
+                const isSelected =
+                  selectedCategory.toLowerCase() === cat.toLowerCase();
+                const iconSrc = CATEGORY_IMAGES[cat.toLowerCase()];
+
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    activeOpacity={0.8}
+                    onPress={() => onSelectCategory(cat)}
+                    className={`mr-3 px-4 py-2.5 rounded-2xl flex-row items-center border shadow-sm ${
                       isSelected
-                        ? 'text-sky-600 dark:text-cyan-400 font-extrabold'
-                        : 'text-slate-600 dark:text-slate-400'
+                        ? 'bg-sky-500/10 border-sky-500 dark:border-cyan-400'
+                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                     }`}
                   >
-                    {cat}
-                  </Text>
-                </TouchableOpacity>
-              );
-            },
-          )}
-        </ScrollView>
-      </View>
+                    {iconSrc ? (
+                      <Image
+                        source={iconSrc}
+                        className="w-5 h-5 mr-1.5"
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <Ionicons
+                        name="grid-outline"
+                        size={16}
+                        color={isSelected ? '#0284c7' : '#64748b'}
+                        style={{ marginRight: 6 }}
+                      />
+                    )}
+                    <Text
+                      className={`text-xs font-bold capitalize ${
+                        isSelected
+                          ? 'text-sky-600 dark:text-cyan-400 font-extrabold'
+                          : 'text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      {cat}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              },
+            )}
+          </ScrollView>
+        </View>
 
-      {/* 🛍️ 상품 리스트 헤더 */}
-      <View className="flex-row justify-between items-center mb-3 px-1">
-        <Text className="text-base font-bold dark:text-white text-slate-900">
-          Products 🛍️
-        </Text>
-        <Text className="text-xs font-bold dark:text-cyan-400 text-sky-600">
-          {productCount} {productCount === 1 ? 'item' : 'items'}
-        </Text>
+        {/* 🛍️ 상품 리스트 헤더 */}
+        <View className="flex-row justify-between items-center mb-3 px-1">
+          <Text className="text-base font-bold dark:text-white text-slate-900">
+            Products
+          </Text>
+          <Text className="text-xs font-bold dark:text-cyan-400 text-sky-600">
+            {productCount} {productCount === 1 ? 'item' : 'items'}
+          </Text>
+        </View>
       </View>
-    </View>
-  );
-});
+    );
+  },
+);
 ShopHeader.displayName = 'ShopHeader';
 
 export default function ShopScreen() {
@@ -186,8 +188,9 @@ export default function ShopScreen() {
   const { data: productReviews = [], isLoading: isReviewsLoading } =
     useProductReviewsQuery(reviewsModalProduct?._id);
 
-  const { data: selectedProductReviews = [] } =
-    useProductReviewsQuery(selectedProduct?._id);
+  const { data: selectedProductReviews = [] } = useProductReviewsQuery(
+    selectedProduct?._id,
+  );
 
   const addToCartMutation = useAddToCartMutation();
   const toggleWishlistMutation = useToggleWishlistMutation();
@@ -219,7 +222,7 @@ export default function ShopScreen() {
         {
           onSuccess: () => {
             Alert.alert(
-              '장바구니 담기 성공 🎉',
+              '장바구니 담기 성공',
               `${product.name} 상품(${quantity}개)이 장바구니에 담겼습니다.`,
             );
           },

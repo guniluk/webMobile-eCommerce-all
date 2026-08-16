@@ -33,8 +33,6 @@ export function useSocialAuth() {
         const redirectUrl = AuthSession.makeRedirectUri({
           scheme: 'mobile',
         });
-        console.log('SSO Redirect URL:', redirectUrl);
-
         const { createdSessionId, setActive } = await startSSOFlow({
           strategy,
           redirectUrl,
@@ -44,13 +42,10 @@ export function useSocialAuth() {
           await setActive({ session: createdSessionId });
         }
       } catch (err: unknown) {
-        console.error('OAuth Error:', err);
         const errMessage =
           err instanceof Error ? err.message : JSON.stringify(err);
 
-        if (
-          errMessage.includes('Missing external verification redirect URL')
-        ) {
+        if (errMessage.includes('Missing external verification redirect URL')) {
           setErrorMessage(
             `Clerk 대시보드(dashboard.clerk.com)의 Social Connections에서 ${
               currentStrategy === 'google' ? 'Google' : 'Apple'

@@ -24,7 +24,8 @@ if (sentryDsn) {
 }
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || '';
-const stripePublishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
+const stripePublishableKey =
+  process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 
 function AuthGuard() {
   const { isLoaded, isSignedIn } = useAuth();

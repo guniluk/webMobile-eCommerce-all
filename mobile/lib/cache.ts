@@ -15,12 +15,9 @@ const createNativeTokenCache = (): TokenCache => {
     async getToken(key: string) {
       try {
         const item = await SecureStore.getItemAsync(key);
-        if (item) {
-          console.log(`${key} token fetched successfully 🔐`);
-        }
+
         return item;
-      } catch (error) {
-        console.error('SecureStore get item error: ', error);
+      } catch {
         await SecureStore.deleteItemAsync(key);
         return null;
       }
@@ -50,8 +47,7 @@ const createWebTokenCache = (): TokenCache => {
     async getToken(key: string) {
       try {
         return typeof window !== 'undefined' ? localStorage.getItem(key) : null;
-      } catch (err) {
-        console.error('localStorage get item error: ', err);
+      } catch {
         return null;
       }
     },
